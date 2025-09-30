@@ -1,0 +1,303 @@
+<template>
+  <div class="auth-container">
+    <div class="container">
+      <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+          <div class="card shadow-lg border-0">
+            <div class="card-body p-5">
+              <div class="text-center mb-4">
+                <i class="bi bi-mortarboard-fill text-primary" style="font-size: 3rem;"></i>
+                <h2 class="mt-3 fw-bold text-primary">EduConnect</h2>
+                <p class="text-muted">Faça login para continuar</p>
+              </div>
+              
+              <form @submit.prevent="handleLogin">
+                <div class="mb-3">
+                  <label for="email" class="form-label">E-mail</label>
+                  <div class="input-group">
+                    <span class="input-group-text">
+                      <i class="bi bi-envelope"></i>
+                    </span>
+                    <input
+                      type="email"
+                      class="form-control"
+                      id="email"
+                      v-model="form.email"
+                      placeholder="seu@email.com"
+                      required
+                    />
+                  </div>
+                  <div v-if="errors.email" class="text-danger small mt-1">
+                    {{ errors.email }}
+                  </div>
+                </div>
+                
+                <div class="mb-3">
+                  <label for="password" class="form-label">Senha</label>
+                  <div class="input-group">
+                    <span class="input-group-text">
+                      <i class="bi bi-lock"></i>
+                    </span>
+                    <input
+                      :type="showPassword ? 'text' : 'password'"
+                      class="form-control"
+                      id="password"
+                      v-model="form.password"
+                      placeholder="Digite sua senha"
+                      required
+                    />
+                    <button 
+                      class="btn btn-outline-secondary" 
+                      type="button"
+                      @click="showPassword = !showPassword"
+                    >
+                      <i :class="showPassword ? 'bi bi-eye-slash' : 'bi bi-eye'"></i>
+                    </button>
+                  </div>
+                  <div v-if="errors.password" class="text-danger small mt-1">
+                    {{ errors.password }}
+                  </div>
+                </div>
+                
+                <div class="mb-3 form-check">
+                  <input
+                    type="checkbox"
+                    class="form-check-input"
+                    id="rememberMe"
+                    v-model="form.rememberMe"
+                  />
+                  <label class="form-check-label" for="rememberMe">
+                    Lembrar-me
+                  </label>
+                </div>
+                
+                <button 
+                  type="submit" 
+                  class="btn btn-primary w-100 py-2"
+                  :disabled="loading"
+                >
+                  <span v-if="loading">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    Entrando...
+                  </span>
+                  <span v-else>
+                    <i class="bi bi-box-arrow-in-right me-2"></i>
+                    Entrar
+                  </span>
+                </button>
+              </form>
+              
+              <div class="text-center mt-4">
+                <a href="#" class="text-decoration-none small">
+                  Esqueceu sua senha?
+                </a>
+              </div>
+              
+              <hr class="my-4">
+              
+              <div class="text-center">
+                <p class="mb-2 text-muted small">Não tem uma conta?</p>
+                <router-link to="/cadastro" class="btn btn-outline-primary w-100">
+                  Criar conta
+                </router-link>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Credenciais de Teste -->
+          <div class="card shadow-lg border-0 mt-3">
+            <div class="card-body p-3">
+              <h6 class="text-center mb-3 text-primary">
+                <i class="bi bi-info-circle me-2"></i>Credenciais de Teste
+              </h6>
+              <div class="row g-2 small">
+                <div class="col-6">
+                  <div class="credential-box" @click="fillCredentials('admin@educonnect.com', 'admin123')">
+                    <strong>👤 Admin</strong>
+                    <div class="text-muted">admin@educonnect.com</div>
+                    <div class="text-muted">Senha: admin123</div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="credential-box" @click="fillCredentials('professor@educonnect.com', 'prof123')">
+                    <strong>👨‍🏫 Professor</strong>
+                    <div class="text-muted">professor@educonnect.com</div>
+                    <div class="text-muted">Senha: prof123</div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="credential-box" @click="fillCredentials('aluno@educonnect.com', 'aluno123')">
+                    <strong>🎓 Aluno</strong>
+                    <div class="text-muted">aluno@educonnect.com</div>
+                    <div class="text-muted">Senha: aluno123</div>
+                  </div>
+                </div>
+                <div class="col-6">
+                  <div class="credential-box" @click="fillCredentials('responsavel@educonnect.com', 'resp123')">
+                    <strong>👨‍👩‍👧 Responsável</strong>
+                    <div class="text-muted">responsavel@educonnect.com</div>
+                    <div class="text-muted">Senha: resp123</div>
+                  </div>
+                </div>
+              </div>
+              <p class="text-center text-muted mt-2 mb-0" style="font-size: 0.75rem;">
+                <i class="bi bi-hand-index me-1"></i>Clique para preencher automaticamente
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../../stores/auth'
+import { useNotificationStore } from '../../stores/notifications'
+
+const router = useRouter()
+const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
+
+const form = ref({
+  email: '',
+  password: '',
+  rememberMe: false
+})
+
+const errors = ref({})
+const loading = ref(false)
+const showPassword = ref(false)
+
+const validateForm = () => {
+  errors.value = {}
+  
+  if (!form.value.email) {
+    errors.value.email = 'E-mail é obrigatório'
+  } else if (!/\S+@\S+\.\S+/.test(form.value.email)) {
+    errors.value.email = 'E-mail inválido'
+  }
+  
+  if (!form.value.password) {
+    errors.value.password = 'Senha é obrigatória'
+  } else if (form.value.password.length < 6) {
+    errors.value.password = 'Senha deve ter no mínimo 6 caracteres'
+  }
+  
+  return Object.keys(errors.value).length === 0
+}
+
+const fillCredentials = (email, password) => {
+  form.value.email = email
+  form.value.password = password
+}
+
+const handleLogin = async () => {
+  if (!validateForm()) return
+  
+  loading.value = true
+  
+  try {
+    // Importar funções mock
+    const { findUserByCredentials, generateMockToken } = await import('../../data/mockUsers.js')
+    
+    // Simular delay de rede
+    await new Promise(resolve => setTimeout(resolve, 800))
+    
+    // Buscar usuário nos dados mock
+    const user = findUserByCredentials(form.value.email, form.value.password)
+    
+    if (!user) {
+      notificationStore.error('E-mail ou senha inválidos')
+      loading.value = false
+      return
+    }
+    
+    // Gerar token mock
+    const token = generateMockToken(user)
+    
+    // Preparar dados do usuário (sem senha)
+    const { password, ...userData } = user
+    
+    authStore.setToken(token)
+    authStore.setUser(userData)
+    
+    notificationStore.success(`Bem-vindo(a), ${user.nome}!`)
+    router.push('/dashboard')
+  } catch (error) {
+    notificationStore.error('Erro ao fazer login. Tente novamente.')
+    console.error('Erro no login:', error)
+  } finally {
+    loading.value = false
+  }
+}
+</script>
+
+<style scoped>
+.auth-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.card {
+  border-radius: 15px;
+}
+
+.input-group-text {
+  background-color: #f8f9fa;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
+}
+
+.btn-outline-primary {
+  color: #667eea;
+  border-color: #667eea;
+}
+
+.btn-outline-primary:hover {
+  background-color: #667eea;
+  border-color: #667eea;
+  color: white;
+}
+
+.credential-box {
+  padding: 0.75rem;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background-color: white;
+  height: 100%;
+}
+
+.credential-box:hover {
+  background-color: #f8f9fa;
+  border-color: #667eea;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.2);
+}
+
+.credential-box strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #667eea;
+}
+
+.credential-box .text-muted {
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+</style>
+
