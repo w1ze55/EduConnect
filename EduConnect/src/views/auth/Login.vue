@@ -200,35 +200,23 @@ const handleLogin = async () => {
   loading.value = true
   
   try {
-    // Importar funções mock
-    const { findUserByCredentials, generateMockToken } = await import('../../data/mockUsers.js')
+    console.log('📝 [LOGIN] Fazendo login...')
+    const result = await authStore.login({
+      email: form.value.email,
+      password: form.value.password
+    })
     
-    // Simular delay de rede
-    await new Promise(resolve => setTimeout(resolve, 800))
-    
-    // Buscar usuário nos dados mock
-    const user = findUserByCredentials(form.value.email, form.value.password)
-    
-    if (!user) {
-      notificationStore.error('E-mail ou senha inválidos')
-      loading.value = false
-      return
+    if (result.success) {
+      console.log('✅ [LOGIN] Login bem-sucedido!')
+      notificationStore.success(`Bem-vindo(a), ${authStore.userName}!`)
+      router.push('/dashboard')
+    } else {
+      console.error('❌ [LOGIN] Login falhou:', result.message)
+      notificationStore.error(result.message || 'E-mail ou senha inválidos')
     }
-    
-    // Gerar token mock
-    const token = generateMockToken(user)
-    
-    // Preparar dados do usuário (sem senha)
-    const { password, ...userData } = user
-    
-    authStore.setToken(token)
-    authStore.setUser(userData)
-    
-    notificationStore.success(`Bem-vindo(a), ${user.nome}!`)
-    router.push('/dashboard')
   } catch (error) {
+    console.error('❌ [LOGIN] Erro no login:', error)
     notificationStore.error('Erro ao fazer login. Tente novamente.')
-    console.error('Erro no login:', error)
   } finally {
     loading.value = false
   }

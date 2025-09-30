@@ -87,5 +87,13 @@ public class AuthService {
         
         return modelMapper.map(savedUsuario, UsuarioDTO.class);
     }
+    
+    public UsuarioDTO getUserInfo(Usuario usuario) {
+        // Buscar usuário atualizado do banco
+        Usuario usuarioAtualizado = usuarioRepository.findByEmail(usuario.getEmail())
+            .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
+        
+        return modelMapper.map(usuarioAtualizado, UsuarioDTO.class);
+    }
 }
 

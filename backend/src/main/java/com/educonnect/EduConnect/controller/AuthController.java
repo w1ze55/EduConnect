@@ -28,5 +28,14 @@ public class AuthController {
         UsuarioDTO usuarioDTO = authService.register(usuario);
         return ResponseEntity.ok(usuarioDTO);
     }
+    
+    @GetMapping("/me")
+    public ResponseEntity<UsuarioDTO> getCurrentUser(@org.springframework.security.core.annotation.AuthenticationPrincipal Usuario usuario) {
+        if (usuario == null) {
+            return ResponseEntity.status(401).build();
+        }
+        UsuarioDTO usuarioDTO = authService.getUserInfo(usuario);
+        return ResponseEntity.ok(usuarioDTO);
+    }
 }
 

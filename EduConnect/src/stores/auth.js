@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
-import { jwtDecode } from 'jwt-decode'
 import api from '../services/api'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    token: localStorage.getItem('token') || null,
-    user: null
+    token: sessionStorage.getItem('token') || null,
+    user: null,
+    loading: false
   }),
   
   getters: {
@@ -21,35 +21,56 @@ export const useAuthStore = defineStore('auth', {
         console.log('🔍 [AUTH] Tentando login com:', credentials.email)
         const response = await api.post('/auth/login', credentials)
         
-        console.log('✅ [AUTH] Resposta do backend:', response.data)
-        console.log('🔑 [AUTH] Token recebido:', response.data.token ? 'Sim' : 'Não')
-        console.log('👤 [AUTH] Usuario recebido:', response.data.usuario)
+        console.log('✅ [AUTH] Resposta do login:', response.data)
         
         if (!response.data.token) {
-          console.error('❌ [AUTH] Token não retornado pelo backend!')
+          console.error('❌ [AUTH] Token não retornado!')
           return { success: false, message: 'Token não recebido' }
         }
         
-        if (!response.data.usuario) {
-          console.error('❌ [AUTH] Usuario não retornado pelo backend!')
-          return { success: false, message: 'Dados do usuário não recebidos' }
-        }
-        
+        // Salvar apenas o token
         this.setToken(response.data.token)
-        this.setUser(response.data.usuario)
         
-        console.log('✅ [AUTH] Login bem-sucedido!')
-        console.log('✅ [AUTH] User no store:', this.user)
+        // Buscar dados do usuário do backend
+        console.log('🔄 [AUTH] Buscando dados do usuário do backend...')
+        await this.fetchCurrentUser()
+        
+        console.log('✅ [AUTH] Login completo!')
+        console.log('✅ [AUTH] User:', this.user)
         console.log('✅ [AUTH] UserRole:', this.userRole)
         
         return { success: true }
       } catch (error) {
         console.error('❌ [AUTH] Erro no login:', error)
-        console.error('❌ [AUTH] Resposta de erro:', error.response?.data)
+        console.error('❌ [AUTH] Resposta:', error.response?.data)
+        this.token = null
+        this.user = null
         return { 
           success: false, 
           message: error.response?.data?.message || 'Erro ao fazer login' 
         }
+      }
+    },
+    
+    async fetchCurrentUser() {
+      try {
+        console.log('🔄 [AUTH] GET /auth/me')
+        console.log('🔑 [AUTH] Token atual:', this.token ? 'Existe' : 'Não existe')
+        console.log('🔑 [AUTH] Header Authorization:', api.defaults.headers.common['Authorization'])
+        
+        const response = await api.get('/auth/me')
+        
+        console.log('✅ [AUTH] Dados do usuário recebidos:', response.data)
+        this.user = response.data
+        
+        return response.data
+      } catch (error) {
+        console.error('❌ [AUTH] Erro ao buscar usuário:', error)
+        console.error('❌ [AUTH] Status:', error.response?.status)
+        console.error('❌ [AUTH] Dados:', error.response?.data)
+        console.error('❌ [AUTH] Fazendo logout devido ao erro')
+        this.logout()
+        throw error
       }
     },
     
@@ -76,54 +97,40 @@ export const useAuthStore = defineStore('auth', {
     },
     
     logout() {
+      console.log('👋 [AUTH] Fazendo logout')
       this.token = null
       this.user = null
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      sessionStorage.removeItem('token')
+      delete api.defaults.headers.common['Authorization']
     },
     
     setToken(token) {
+      console.log('🔑 [AUTH] Salvando token')
       this.token = token
-      localStorage.setItem('token', token)
-      
-      // Configurar token no api
+      sessionStorage.setItem('token', token)
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`
     },
     
-    setUser(user) {
-      console.log('📝 [AUTH] Salvando user:', user)
-      this.user = user
-      localStorage.setItem('user', JSON.stringify(user))
-      console.log('✅ [AUTH] User salvo no localStorage e store')
-      console.log('✅ [AUTH] User.role:', user?.role)
-    },
-    
-    initializeAuth() {
+    async initializeAuth() {
       console.log('🔄 [AUTH] Inicializando autenticação...')
-      const token = localStorage.getItem('token')
-      const user = localStorage.getItem('user')
-      
-      console.log('🔍 [AUTH] Token no localStorage:', token ? 'Existe' : 'Não existe')
-      console.log('🔍 [AUTH] User no localStorage:', user ? 'Existe' : 'Não existe')
+      const token = sessionStorage.getItem('token')
       
       if (token) {
+        console.log('✅ [AUTH] Token encontrado, configurando...')
         this.token = token
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
         
-        if (user) {
-          try {
-            this.user = JSON.parse(user)
-            console.log('✅ [AUTH] User carregado do localStorage:', this.user)
-            console.log('✅ [AUTH] UserRole:', this.user?.role)
-          } catch (error) {
-            console.error('❌ [AUTH] Erro ao carregar usuário:', error)
-            console.error('❌ [AUTH] User string:', user)
-          }
-        } else {
-          console.warn('⚠️ [AUTH] Token existe mas user não!')
+        // Buscar dados do usuário do backend
+        try {
+          console.log('🔄 [AUTH] Buscando usuário do backend...')
+          await this.fetchCurrentUser()
+          console.log('✅ [AUTH] Usuário carregado:', this.user)
+        } catch (error) {
+          console.error('❌ [AUTH] Erro ao carregar usuário, fazendo logout')
+          this.logout()
         }
       } else {
-        console.log('ℹ️ [AUTH] Usuário não autenticado')
+        console.log('ℹ️ [AUTH] Nenhum token encontrado')
       }
     }
   }
