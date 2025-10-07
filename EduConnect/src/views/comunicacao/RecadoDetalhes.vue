@@ -28,9 +28,25 @@
                   </span>
                 </div>
               </div>
-              <button class="btn btn-outline-secondary btn-sm">
-                <i class="bi bi-printer me-1"></i>Imprimir
-              </button>
+              <div class="d-flex gap-2">
+                <button 
+                  v-if="podeEditar" 
+                  class="btn btn-outline-primary btn-sm"
+                  @click="editarRecado"
+                >
+                  <i class="bi bi-pencil me-1"></i>Editar
+                </button>
+                <button 
+                  v-if="podeDeletar" 
+                  class="btn btn-outline-danger btn-sm"
+                  @click="confirmarDelecao"
+                >
+                  <i class="bi bi-trash me-1"></i>Deletar
+                </button>
+                <button class="btn btn-outline-secondary btn-sm">
+                  <i class="bi bi-printer me-1"></i>Imprimir
+                </button>
+              </div>
             </div>
           </div>
           
@@ -145,68 +161,117 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '../../stores/auth'
 import { useNotificationStore } from '../../stores/notifications'
+import recadosService from '../../services/recadosService'
 import LoadingSpinner from '../../components/common/LoadingSpinner.vue'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
 
 const loading = ref(false)
 const recado = ref(null)
 const confirmandoLeitura = ref(false)
 
-// Mock de dados - substituir por chamada real da API
+// Verificar se o usuário pode editar/deletar o recado
+const podeEditar = computed(() => {
+  if (!recado.value || !authStore.user) return false
+  
+  const role = authStore.user.role
+  const isAutor = recado.value.remetenteId === authStore.user.id
+  const isAdmin = role === 'ADMINISTRADOR' || role === 'DIRETORIA'
+  
+  return isAutor || isAdmin
+})
+
+const podeDeletar = computed(() => {
+  return podeEditar.value
+})
+
 onMounted(async () => {
   loading.value = true
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  
-  recado.value = {
-    id: route.params.id,
-    titulo: 'Reunião de Pais e Mestres',
-    remetente: 'Coordenação Pedagógica',
-    dataEnvio: '30/09/2025',
-    horaEnvio: '14:30',
-    categoria: 'evento',
-    importante: true,
-    lido: false,
-    conteudo: `
-      <p>Prezados pais e responsáveis,</p>
-      <p>Informamos que a reunião de pais e mestres do terceiro bimestre será realizada no próximo sábado, dia 05 de outubro de 2025, das 9h às 12h.</p>
-      <p>Durante a reunião, os professores estarão disponíveis para:</p>
-      <ul>
-        <li>Apresentar o desempenho acadêmico dos alunos</li>
-        <li>Discutir comportamento e participação em sala</li>
-        <li>Tirar dúvidas sobre o cronograma das próximas atividades</li>
-        <li>Tratar de assuntos específicos, se necessário</li>
-      </ul>
-      <p><strong>Local:</strong> Instalações da escola<br>
-      <strong>Horário:</strong> 9h às 12h<br>
-      <strong>Data:</strong> 05/10/2025</p>
-      <p>A presença é muito importante para acompanharmos juntos o desenvolvimento dos alunos.</p>
-      <p>Atenciosamente,<br>Coordenação Pedagógica</p>
-    `,
-    anexos: [
-      {
-        id: 1,
-        nome: 'cronograma-reuniao.pdf',
-        tipo: 'pdf',
-        tamanho: '245 KB'
-      },
-      {
-        id: 2,
-        nome: 'mapa-escola.jpg',
-        tipo: 'image',
-        tamanho: '1.2 MB'
-      }
-    ],
-    imagens: []
+  try {
+    const response = await recadosService.getRecadoById(route.params.id)
+    const recadoData = response.data
+    
+    recado.value = {
+      id: recadoData.id,
+      titulo: recadoData.titulo,
+      remetente: recadoData.remetente,
+      dataEnvio: formatarData(recadoData.dataEnvio),
+      horaEnvio: formatarHora(recadoData.dataEnvio),
+      categoria: recadoData.categoria.toLowerCase(),
+      importante: recadoData.importante,
+      lido: recadoData.lido,
+      dataLeitura: recadoData.dataLeitura ? formatarDataHora(recadoData.dataLeitura) : null,
+      conteudo: formatarConteudo(recadoData.conteudo),
+      anexos: recadoData.anexos ? recadoData.anexos.map((url, index) => ({
+        id: index,
+        nome: extrairNomeAnexo(url),
+        tipo: extrairTipoAnexo(url),
+        tamanho: 'N/A',
+        url: url
+      })) : [],
+      imagens: []
+    }
+  } catch (error) {
+    console.error('Erro ao carregar recado:', error)
+    notificationStore.error('Erro ao carregar recado')
+    router.push('/recados')
+  } finally {
+    loading.value = false
   }
-  
-  loading.value = false
 })
+
+const formatarData = (dataISO) => {
+  const data = new Date(dataISO)
+  return data.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
+}
+
+const formatarHora = (dataISO) => {
+  const data = new Date(dataISO)
+  return data.toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const formatarDataHora = (dataISO) => {
+  const data = new Date(dataISO)
+  return data.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const formatarConteudo = (conteudo) => {
+  return conteudo.replace(/\n/g, '<br>')
+}
+
+const extrairNomeAnexo = (url) => {
+  const partes = url.split('/')
+  return partes[partes.length - 1] || 'anexo'
+}
+
+const extrairTipoAnexo = (url) => {
+  const extensao = url.split('.').pop().toLowerCase()
+  if (['pdf'].includes(extensao)) return 'pdf'
+  if (['doc', 'docx'].includes(extensao)) return 'doc'
+  if (['xls', 'xlsx'].includes(extensao)) return 'xls'
+  if (['jpg', 'jpeg', 'png', 'gif'].includes(extensao)) return 'image'
+  return 'default'
+}
 
 const getCategoriaColor = (categoria) => {
   const colors = {
@@ -233,11 +298,12 @@ const confirmarLeitura = async () => {
   confirmandoLeitura.value = true
   
   try {
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await recadosService.confirmarLeitura(recado.value.id)
     recado.value.lido = true
     recado.value.dataLeitura = new Date().toLocaleString('pt-BR')
     notificationStore.success('Leitura confirmada com sucesso!')
   } catch (error) {
+    console.error('Erro ao confirmar leitura:', error)
     notificationStore.error('Erro ao confirmar leitura')
   } finally {
     confirmandoLeitura.value = false
@@ -247,6 +313,25 @@ const confirmarLeitura = async () => {
 const visualizarImagem = (imagem) => {
   // Implementar visualizador de imagem (modal)
   window.open(imagem, '_blank')
+}
+
+const editarRecado = () => {
+  router.push(`/recados/editar/${recado.value.id}`)
+}
+
+const confirmarDelecao = async () => {
+  if (!confirm('Tem certeza que deseja deletar este recado? Esta ação não pode ser desfeita.')) {
+    return
+  }
+  
+  try {
+    await recadosService.deletarRecado(recado.value.id)
+    notificationStore.success('Recado deletado com sucesso!')
+    router.push('/recados')
+  } catch (error) {
+    console.error('Erro ao deletar recado:', error)
+    notificationStore.error(error.response?.data?.message || 'Erro ao deletar recado')
+  }
 }
 </script>
 

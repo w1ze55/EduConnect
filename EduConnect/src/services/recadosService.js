@@ -13,6 +13,14 @@ export default {
     return api.post('/recados', data)
   },
   
+  atualizarRecado(id, data) {
+    return api.put(`/recados/${id}`, data)
+  },
+  
+  deletarRecado(id) {
+    return api.delete(`/recados/${id}`)
+  },
+  
   confirmarLeitura(id) {
     return api.post(`/recados/${id}/confirmar-leitura`)
   },

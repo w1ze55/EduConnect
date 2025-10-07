@@ -122,10 +122,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
+import { useNotificationStore } from '../../stores/notifications'
+import recadosService from '../../services/recadosService'
 import LoadingSpinner from '../../components/common/LoadingSpinner.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
 
 const loading = ref(false)
 const recados = ref([])
@@ -138,63 +141,40 @@ const filters = ref({
 
 const canSendRecados = computed(() => {
   const role = authStore.userRole
-  return role === 'PROFESSOR' || role === 'ADMINISTRADOR'
+  return role === 'PROFESSOR' || role === 'DIRETORIA' || role === 'ADMINISTRADOR'
 })
 
-// Mock de dados - substituir por chamada real da API
 onMounted(async () => {
   loading.value = true
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  
-  recados.value = [
-    {
-      id: 1,
-      titulo: 'Reunião de Pais e Mestres',
-      remetente: 'Coordenação Pedagógica',
-      dataEnvio: '30/09/2025',
-      categoria: 'evento',
-      preview: 'Informamos que a reunião de pais e mestres será realizada no próximo sábado, dia 05/10...',
-      lido: false,
-      anexos: 1,
-      importante: true
-    },
-    {
-      id: 2,
-      titulo: 'Material necessário para aula prática',
-      remetente: 'Prof. Maria Silva',
-      dataEnvio: '29/09/2025',
-      categoria: 'academico',
-      preview: 'Para a próxima aula prática de Química, os alunos devem trazer jaleco, óculos de proteção...',
-      lido: false,
-      anexos: 0,
-      importante: false
-    },
-    {
-      id: 3,
-      titulo: 'Comunicado sobre pagamento',
-      remetente: 'Setor Financeiro',
-      dataEnvio: '28/09/2025',
-      categoria: 'financeiro',
-      preview: 'Lembramos que o vencimento da mensalidade de outubro é dia 10. Evite multas...',
-      lido: true,
-      anexos: 2,
-      importante: false
-    },
-    {
-      id: 4,
-      titulo: 'Suspensão de aulas',
-      remetente: 'Direção',
-      dataEnvio: '27/09/2025',
-      categoria: 'geral',
-      preview: 'Comunicamos que na próxima segunda-feira, dia 02/10, não haverá aula devido ao feriado...',
-      lido: true,
-      anexos: 0,
-      importante: true
-    }
-  ]
-  
-  loading.value = false
+  try {
+    const response = await recadosService.getRecados()
+    recados.value = response.data.map(recado => ({
+      id: recado.id,
+      titulo: recado.titulo,
+      remetente: recado.remetente,
+      dataEnvio: formatarData(recado.dataEnvio),
+      categoria: recado.categoria.toLowerCase(),
+      preview: recado.conteudo.substring(0, 100) + '...',
+      lido: recado.lido,
+      anexos: recado.anexos ? recado.anexos.length : 0,
+      importante: recado.importante
+    }))
+  } catch (error) {
+    console.error('Erro ao carregar recados:', error)
+    notificationStore.error('Erro ao carregar recados')
+  } finally {
+    loading.value = false
+  }
 })
+
+const formatarData = (dataISO) => {
+  const data = new Date(dataISO)
+  return data.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
+}
 
 const recadosFiltrados = computed(() => {
   return recados.value.filter(recado => {

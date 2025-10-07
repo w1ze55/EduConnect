@@ -14,6 +14,8 @@ public class RecadoDTO {
     private CategoriaRecado categoria;
     private Boolean importante;
     private Boolean exigirConfirmacao;
+    private List<String> destinatarios;
+    private List<Long> destinatariosEspecificos;
     private String remetente;
     private Long remetenteId;
     private LocalDateTime dataEnvio;

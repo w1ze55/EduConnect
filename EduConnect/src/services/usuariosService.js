@@ -1,16 +1,16 @@
 import api from './api'
 
 export default {
-  getUsuarios(params = {}) {
-    return api.get('/usuarios', { params })
+  getAllUsuarios() {
+    return api.get('/usuarios')
   },
   
   getUsuarioById(id) {
     return api.get(`/usuarios/${id}`)
   },
   
-  criarUsuario(data) {
-    return api.post('/usuarios', data)
+  getAlunos() {
+    return api.get('/usuarios/alunos')
   },
   
   atualizarUsuario(id, data) {
@@ -21,8 +21,7 @@ export default {
     return api.delete(`/usuarios/${id}`)
   },
   
-  ativarDesativarUsuario(id) {
-    return api.patch(`/usuarios/${id}/toggle-status`)
+  atualizarPerfil(data) {
+    return api.put('/usuarios/perfil', data)
   }
 }
-

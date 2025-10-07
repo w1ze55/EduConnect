@@ -25,6 +25,7 @@
               <option value="ALUNO">Aluno</option>
               <option value="RESPONSAVEL">Responsável</option>
               <option value="PROFESSOR">Professor</option>
+              <option value="DIRETORIA">Diretoria</option>
               <option value="ADMINISTRADOR">Administrador</option>
             </select>
           </div>

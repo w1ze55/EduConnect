@@ -39,6 +39,17 @@ public class DataInitializer implements CommandLineRunner {
         admin.setAtivo(true);
         admin = usuarioRepository.save(admin);
         
+        // Criar Diretoria
+        Usuario diretoria = new Usuario();
+        diretoria.setNome("Patricia Direção");
+        diretoria.setEmail("diretoria@educonnect.com");
+        diretoria.setPassword(passwordEncoder.encode("dir123"));
+        diretoria.setCpf("888.888.888-88");
+        diretoria.setTelefone("(11) 98999-9999");
+        diretoria.setRole(Role.DIRETORIA);
+        diretoria.setAtivo(true);
+        diretoria = usuarioRepository.save(diretoria);
+        
         // Criar Professores
         Usuario professor1 = new Usuario();
         professor1.setNome("Maria Silva Santos");
@@ -163,6 +174,7 @@ public class DataInitializer implements CommandLineRunner {
         System.out.println("✅ Dados iniciais carregados com sucesso!");
         System.out.println("📧 Credenciais de teste:");
         System.out.println("   Admin: admin@educonnect.com / admin123");
+        System.out.println("   Diretoria: diretoria@educonnect.com / dir123");
         System.out.println("   Professor: professor@educonnect.com / prof123");
         System.out.println("   Aluno: aluno@educonnect.com / aluno123");
         System.out.println("   Responsável: responsavel@educonnect.com / resp123");

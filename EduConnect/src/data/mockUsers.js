@@ -14,6 +14,20 @@ export const mockUsers = [
     foto: null
   },
   
+  // DIRETORIA
+  {
+    id: 8,
+    nome: 'Patricia Direção',
+    email: 'diretoria@educonnect.com',
+    password: 'dir123',
+    cpf: '888.888.888-88',
+    telefone: '(11) 98999-9999',
+    role: 'DIRETORIA',
+    ativo: true,
+    dataCadastro: '2024-01-20',
+    foto: null
+  },
+  
   // PROFESSORES
   {
     id: 2,
@@ -266,6 +280,48 @@ export const mockDataByRole = {
     ]
   },
   
+  DIRETORIA: {
+    stats: {
+      totalUsuarios: 245,
+      usuariosAtivos: 198,
+      recadosEnviados: 856,
+      taxaPagamento: 94
+    },
+    usuariosPorPerfil: {
+      alunos: 120,
+      responsaveis: 80,
+      professores: 40,
+      diretoria: 2,
+      administradores: 3
+    },
+    atividadesRecentes: [
+      {
+        id: 1,
+        tipo: 'novo_usuario',
+        descricao: 'Novo usuário cadastrado',
+        detalhe: 'Maria Silva - há 2 horas',
+        icone: 'bi-person-plus',
+        cor: 'success'
+      },
+      {
+        id: 2,
+        tipo: 'recado',
+        descricao: 'Recado enviado',
+        detalhe: 'Reunião de pais - há 5 horas',
+        icone: 'bi-envelope',
+        cor: 'primary'
+      },
+      {
+        id: 3,
+        tipo: 'evento',
+        descricao: 'Evento criado',
+        detalhe: 'Feira de Ciências - há 1 dia',
+        icone: 'bi-calendar-event',
+        cor: 'info'
+      }
+    ]
+  },
+  
   ADMINISTRADOR: {
     stats: {
       totalUsuarios: 245,
@@ -277,7 +333,8 @@ export const mockDataByRole = {
       alunos: 120,
       responsaveis: 80,
       professores: 40,
-      administradores: 5
+      diretoria: 2,
+      administradores: 3
     },
     atividadesRecentes: [
       {

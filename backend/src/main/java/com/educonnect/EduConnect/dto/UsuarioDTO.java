@@ -18,5 +18,7 @@ public class UsuarioDTO {
     private String matricula;
     private List<String> disciplinas;
     private List<String> turmas;
+    private Long responsavelId;
+    private String responsavelNome;
 }
 

@@ -40,7 +40,13 @@ const routes = [
     path: '/recados/enviar',
     name: 'EnviarRecado',
     component: () => import('../views/comunicacao/EnviarRecado.vue'),
-    meta: { requiresAuth: true, roles: ['PROFESSOR', 'ADMINISTRADOR'] }
+    meta: { requiresAuth: true, roles: ['PROFESSOR', 'DIRETORIA', 'ADMINISTRADOR'] }
+  },
+  {
+    path: '/recados/editar/:id',
+    name: 'EditarRecado',
+    component: () => import('../views/comunicacao/EditarRecado.vue'),
+    meta: { requiresAuth: true, roles: ['PROFESSOR', 'DIRETORIA', 'ADMINISTRADOR'] }
   },
   {
     path: '/atividades',
@@ -70,19 +76,19 @@ const routes = [
     path: '/financeiro',
     name: 'Financeiro',
     component: () => import('../views/financeiro/Financeiro.vue'),
-    meta: { requiresAuth: true, roles: ['RESPONSAVEL', 'ADMINISTRADOR'] }
+    meta: { requiresAuth: true, roles: ['RESPONSAVEL', 'DIRETORIA', 'ADMINISTRADOR'] }
   },
   {
     path: '/admin/usuarios',
     name: 'AdminUsuarios',
     component: () => import('../views/admin/Usuarios.vue'),
-    meta: { requiresAuth: true, roles: ['ADMINISTRADOR'] }
+    meta: { requiresAuth: true, roles: ['DIRETORIA', 'ADMINISTRADOR'] }
   },
   {
     path: '/admin/estatisticas',
     name: 'AdminEstatisticas',
     component: () => import('../views/admin/Estatisticas.vue'),
-    meta: { requiresAuth: true, roles: ['ADMINISTRADOR'] }
+    meta: { requiresAuth: true, roles: ['DIRETORIA', 'ADMINISTRADOR'] }
   },
   {
     path: '/perfil',

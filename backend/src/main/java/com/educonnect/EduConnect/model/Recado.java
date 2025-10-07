@@ -40,6 +40,16 @@ public class Recado {
     @Column(nullable = false)
     private Boolean exigirConfirmacao = false;
     
+    @ElementCollection
+    @CollectionTable(name = "recado_destinatarios", joinColumns = @JoinColumn(name = "recado_id"))
+    @Column(name = "role_destinatario")
+    private List<String> destinatarios = new ArrayList<>();
+    
+    @ElementCollection
+    @CollectionTable(name = "recado_destinatarios_especificos", joinColumns = @JoinColumn(name = "recado_id"))
+    @Column(name = "usuario_id")
+    private List<Long> destinatariosEspecificos = new ArrayList<>();
+    
     @ManyToOne
     @JoinColumn(name = "remetente_id", nullable = false)
     private Usuario remetente;

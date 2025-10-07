@@ -8,17 +8,24 @@
       </div>
     </div>
     
-    <div class="row justify-content-center">
+    <div v-if="carregando" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Carregando...</span>
+      </div>
+      <p class="mt-3 text-muted">Carregando recado...</p>
+    </div>
+    
+    <div v-else class="row justify-content-center">
       <div class="col-lg-8">
         <div class="card shadow-sm">
           <div class="card-header bg-white">
             <h4 class="mb-0">
-              <i class="bi bi-send me-2"></i>Enviar Novo Recado
+              <i class="bi bi-pencil me-2"></i>Editar Recado
             </h4>
           </div>
           
           <div class="card-body">
-            <form @submit.prevent="enviarRecado">
+            <form @submit.prevent="salvarRecado">
               <div class="mb-3">
                 <label for="titulo" class="form-label">Título *</label>
                 <input
@@ -105,41 +112,6 @@
                 ></textarea>
               </div>
               
-              <div class="mb-3">
-                <label class="form-label">Anexos</label>
-                <div class="upload-area" @click="triggerFileInput">
-                  <input
-                    type="file"
-                    ref="fileInput"
-                    @change="handleFileUpload"
-                    multiple
-                    hidden
-                  />
-                  <i class="bi bi-cloud-upload fs-1 text-muted"></i>
-                  <p class="mb-0 mt-2">Clique para selecionar arquivos</p>
-                  <small class="text-muted">PDF, DOC, XLS, imagens (máx. 10MB cada)</small>
-                </div>
-                
-                <div v-if="form.anexos.length > 0" class="mt-3">
-                  <div 
-                    v-for="(anexo, index) in form.anexos" 
-                    :key="index"
-                    class="anexo-preview"
-                  >
-                    <i class="bi bi-file-earmark me-2"></i>
-                    <span>{{ anexo.name }}</span>
-                    <small class="text-muted ms-2">({{ formatFileSize(anexo.size) }})</small>
-                    <button 
-                      type="button" 
-                      class="btn btn-sm btn-link text-danger ms-auto"
-                      @click="removerAnexo(index)"
-                    >
-                      <i class="bi bi-x"></i>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              
               <div class="mb-3 form-check">
                 <input
                   type="checkbox"
@@ -170,15 +142,15 @@
                 <button 
                   type="submit" 
                   class="btn btn-primary"
-                  :disabled="enviando"
+                  :disabled="salvando"
                 >
-                  <span v-if="enviando">
+                  <span v-if="salvando">
                     <span class="spinner-border spinner-border-sm me-2"></span>
-                    Enviando...
+                    Salvando...
                   </span>
                   <span v-else>
-                    <i class="bi bi-send me-2"></i>
-                    Enviar Recado
+                    <i class="bi bi-check2 me-2"></i>
+                    Salvar Alterações
                   </span>
                 </button>
                 <button 
@@ -198,14 +170,20 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useNotificationStore } from '../../stores/notifications'
 import recadosService from '../../services/recadosService'
 import usuariosService from '../../services/usuariosService'
 
 const router = useRouter()
+const route = useRoute()
 const notificationStore = useNotificationStore()
+
+const carregando = ref(false)
+const salvando = ref(false)
+const carregandoAlunos = ref(false)
+const alunosDisponiveis = ref([])
 
 const form = ref({
   titulo: '',
@@ -213,22 +191,14 @@ const form = ref({
   destinatarios: '',
   alunosSelecionados: [],
   conteudo: '',
-  anexos: [],
   importante: false,
   exigirConfirmacao: false
 })
 
-const fileInput = ref(null)
-const enviando = ref(false)
-const carregandoAlunos = ref(false)
-const alunosDisponiveis = ref([])
-
 // Carregar alunos quando "específico" for selecionado
 watch(() => form.value.destinatarios, async (novoValor) => {
-  if (novoValor === 'especifico') {
+  if (novoValor === 'especifico' && alunosDisponiveis.value.length === 0) {
     await carregarAlunos()
-  } else {
-    form.value.alunosSelecionados = []
   }
 })
 
@@ -245,42 +215,57 @@ const carregarAlunos = async () => {
   }
 }
 
-const triggerFileInput = () => {
-  fileInput.value.click()
-}
-
-const handleFileUpload = (event) => {
-  const files = Array.from(event.target.files)
-  
-  files.forEach(file => {
-    if (file.size > 10 * 1024 * 1024) {
-      notificationStore.warning(`Arquivo ${file.name} excede 10MB`)
-      return
+// Carregar dados do recado
+onMounted(async () => {
+  carregando.value = true
+  try {
+    const response = await recadosService.getRecadoById(route.params.id)
+    const recado = response.data
+    
+    // Mapear destinatários do backend para o frontend
+    let destinatariosValue = 'todos'
+    let alunosIds = []
+    
+    // Verificar se é destinatário específico
+    if (recado.destinatariosEspecificos && recado.destinatariosEspecificos.length > 0) {
+      destinatariosValue = 'especifico'
+      alunosIds = recado.destinatariosEspecificos
+      // Carregar lista de alunos
+      await carregarAlunos()
+    } else if (recado.destinatarios && recado.destinatarios.length > 0) {
+      const dest = recado.destinatarios[0]
+      if (dest === 'ALUNO') destinatariosValue = 'alunos'
+      else if (dest === 'RESPONSAVEL') destinatariosValue = 'responsaveis'
+      else if (dest === 'PROFESSOR') destinatariosValue = 'professores'
+      else if (dest === 'TODOS') destinatariosValue = 'todos'
     }
-    form.value.anexos.push(file)
-  })
-}
+    
+    form.value = {
+      titulo: recado.titulo,
+      categoria: recado.categoria.toLowerCase(),
+      destinatarios: destinatariosValue,
+      alunosSelecionados: alunosIds,
+      conteudo: recado.conteudo,
+      importante: recado.importante,
+      exigirConfirmacao: recado.exigirConfirmacao
+    }
+  } catch (error) {
+    console.error('Erro ao carregar recado:', error)
+    notificationStore.error('Erro ao carregar recado')
+    router.push('/recados')
+  } finally {
+    carregando.value = false
+  }
+})
 
-const removerAnexo = (index) => {
-  form.value.anexos.splice(index, 1)
-}
-
-const formatFileSize = (bytes) => {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
-}
-
-const enviarRecado = async () => {
+const salvarRecado = async () => {
   // Validar se selecionou alunos quando "específico"
   if (form.value.destinatarios === 'especifico' && form.value.alunosSelecionados.length === 0) {
     notificationStore.error('Selecione pelo menos um aluno para enviar o recado.')
     return
   }
   
-  enviando.value = true
+  salvando.value = true
   
   try {
     // Mapear categoria para o formato esperado pelo backend
@@ -318,46 +303,19 @@ const enviarRecado = async () => {
       recadoData.destinatariosEspecificos = []
     }
     
-    // Se houver anexos, fazer upload primeiro (por enquanto, enviar sem anexos)
-    // TODO: Implementar upload de anexos quando o backend suportar
-    if (form.value.anexos.length > 0) {
-      notificationStore.warning('Upload de anexos será implementado em breve')
-    }
-    
-    await recadosService.enviarRecado(recadoData)
-    notificationStore.success('Recado enviado com sucesso!')
-    router.push('/recados')
+    await recadosService.atualizarRecado(route.params.id, recadoData)
+    notificationStore.success('Recado atualizado com sucesso!')
+    router.push(`/recados/${route.params.id}`)
   } catch (error) {
-    console.error('Erro ao enviar recado:', error)
-    notificationStore.error(error.response?.data?.message || 'Erro ao enviar recado. Verifique os dados e tente novamente.')
+    console.error('Erro ao atualizar recado:', error)
+    notificationStore.error(error.response?.data?.message || 'Erro ao atualizar recado')
   } finally {
-    enviando.value = false
+    salvando.value = false
   }
 }
 </script>
 
 <style scoped>
-.upload-area {
-  border: 2px dashed #dee2e6;
-  border-radius: 8px;
-  padding: 2rem;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.upload-area:hover {
-  border-color: #0d6efd;
-  background-color: #f8f9fa;
-}
-
-.anexo-preview {
-  display: flex;
-  align-items: center;
-  padding: 0.75rem;
-  background-color: #f8f9fa;
-  border-radius: 6px;
-  margin-bottom: 0.5rem;
-}
+/* Estilos podem ser reutilizados do EnviarRecado */
 </style>
 

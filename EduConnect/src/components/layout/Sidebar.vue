@@ -32,49 +32,49 @@ const menuItems = [
     path: '/dashboard', 
     label: 'Dashboard', 
     icon: 'bi bi-house-door-fill',
-    roles: ['ALUNO', 'RESPONSAVEL', 'PROFESSOR', 'ADMINISTRADOR']
+    roles: ['ALUNO', 'RESPONSAVEL', 'PROFESSOR', 'DIRETORIA', 'ADMINISTRADOR']
   },
   { 
     path: '/recados', 
     label: 'Recados', 
     icon: 'bi bi-envelope-fill',
-    roles: ['ALUNO', 'RESPONSAVEL', 'PROFESSOR', 'ADMINISTRADOR']
+    roles: ['ALUNO', 'RESPONSAVEL', 'PROFESSOR', 'DIRETORIA', 'ADMINISTRADOR']
   },
   { 
     path: '/atividades', 
     label: 'Atividades', 
     icon: 'bi bi-journal-text',
-    roles: ['ALUNO', 'PROFESSOR', 'ADMINISTRADOR']
+    roles: ['ALUNO', 'PROFESSOR', 'DIRETORIA', 'ADMINISTRADOR']
   },
   { 
     path: '/calendario', 
     label: 'Calendário', 
     icon: 'bi bi-calendar-event-fill',
-    roles: ['ALUNO', 'RESPONSAVEL', 'PROFESSOR', 'ADMINISTRADOR']
+    roles: ['ALUNO', 'RESPONSAVEL', 'PROFESSOR', 'DIRETORIA', 'ADMINISTRADOR']
   },
   { 
     path: '/documentos', 
     label: 'Documentos', 
     icon: 'bi bi-file-earmark-text-fill',
-    roles: ['ALUNO', 'RESPONSAVEL', 'PROFESSOR', 'ADMINISTRADOR']
+    roles: ['ALUNO', 'RESPONSAVEL', 'PROFESSOR', 'DIRETORIA', 'ADMINISTRADOR']
   },
   { 
     path: '/financeiro', 
     label: 'Financeiro', 
     icon: 'bi bi-wallet2',
-    roles: ['RESPONSAVEL', 'ADMINISTRADOR']
+    roles: ['RESPONSAVEL', 'DIRETORIA', 'ADMINISTRADOR']
   },
   { 
     path: '/admin/usuarios', 
     label: 'Usuários', 
     icon: 'bi bi-people-fill',
-    roles: ['ADMINISTRADOR']
+    roles: ['DIRETORIA', 'ADMINISTRADOR']
   },
   { 
     path: '/admin/estatisticas', 
     label: 'Estatísticas', 
     icon: 'bi bi-graph-up',
-    roles: ['ADMINISTRADOR']
+    roles: ['DIRETORIA', 'ADMINISTRADOR']
   }
 ]
 
