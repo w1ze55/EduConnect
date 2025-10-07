@@ -30,6 +30,27 @@ public class EscolaService {
     }
     
     @Transactional(readOnly = true)
+    public List<EscolaDTO> listarTodasPorPermissao(Usuario usuarioLogado) {
+        // ADMINISTRADOR vê todas as escolas
+        if (usuarioLogado.getRole() == Role.ADMINISTRADOR) {
+            return escolaRepository.findAll().stream()
+                    .map(this::convertToDTO)
+                    .collect(Collectors.toList());
+        }
+        // DIRETORIA vê apenas a sua escola
+        else if (usuarioLogado.getRole() == Role.DIRETORIA) {
+            if (usuarioLogado.getEscola() == null) {
+                throw new RuntimeException("Diretor não está vinculado a nenhuma escola");
+            }
+            return escolaRepository.findById(usuarioLogado.getEscola().getId())
+                    .map(escola -> List.of(convertToDTO(escola)))
+                    .orElseThrow(() -> new RuntimeException("Escola não encontrada"));
+        }
+        // Outros perfis não têm acesso
+        throw new RuntimeException("Acesso não autorizado");
+    }
+    
+    @Transactional(readOnly = true)
     public List<EscolaDTO> listarAtivas() {
         return escolaRepository.findByAtivoTrue().stream()
                 .map(this::convertToDTO)

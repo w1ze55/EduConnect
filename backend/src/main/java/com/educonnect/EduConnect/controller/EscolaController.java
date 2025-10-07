@@ -23,8 +23,10 @@ public class EscolaController {
     
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'DIRETORIA')")
-    public ResponseEntity<List<EscolaDTO>> listarTodas() {
-        return ResponseEntity.ok(escolaService.listarTodas());
+    public ResponseEntity<List<EscolaDTO>> listarTodas(
+            @org.springframework.security.core.annotation.AuthenticationPrincipal 
+            com.educonnect.EduConnect.model.Usuario usuarioLogado) {
+        return ResponseEntity.ok(escolaService.listarTodasPorPermissao(usuarioLogado));
     }
     
     @GetMapping("/ativas")

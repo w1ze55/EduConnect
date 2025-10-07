@@ -31,8 +31,27 @@ public class UsuarioController {
     private final PasswordEncoder passwordEncoder;
     
     @GetMapping
-    public ResponseEntity<List<UsuarioDTO>> getAllUsuarios() {
-        List<Usuario> usuarios = usuarioRepository.findAll();
+    public ResponseEntity<List<UsuarioDTO>> getAllUsuarios(
+            @AuthenticationPrincipal Usuario usuarioLogado) {
+        List<Usuario> usuarios;
+        
+        // Se for ADMINISTRADOR, vê todos os usuários
+        if (usuarioLogado.getRole().name().equals("ADMINISTRADOR")) {
+            usuarios = usuarioRepository.findAll();
+        } 
+        // Se for DIRETORIA, vê apenas usuários da sua escola
+        else if (usuarioLogado.getRole().name().equals("DIRETORIA")) {
+            if (usuarioLogado.getEscola() == null) {
+                throw new RuntimeException("Diretor não está vinculado a nenhuma escola");
+            }
+            usuarios = usuarioRepository.findAll().stream()
+                .filter(u -> u.getEscola() != null && 
+                           u.getEscola().getId().equals(usuarioLogado.getEscola().getId()))
+                .collect(Collectors.toList());
+        } else {
+            throw new RuntimeException("Acesso não autorizado");
+        }
+        
         List<UsuarioDTO> dtos = usuarios.stream()
             .map(u -> {
                 UsuarioDTO dto = modelMapper.map(u, UsuarioDTO.class);

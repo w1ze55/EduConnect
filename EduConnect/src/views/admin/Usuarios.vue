@@ -1,64 +1,66 @@
 <template>
   <div class="container-fluid py-4">
-    <!-- Escolas Section -->
-    <div class="row mb-4">
-      <div class="col-md-6">
-        <h2 class="fw-bold">
-          <i class="bi bi-building me-2"></i>Gestão de Escolas
-        </h2>
-      </div>
-      <div class="col-md-6 text-end">
-        <button class="btn btn-primary" @click="showEscolaModal('create')">
-          <i class="bi bi-plus-circle me-2"></i>Nova Escola
-        </button>
-      </div>
-    </div>
-
-    <div class="card shadow-sm mb-4">
-      <div class="card-body">
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>Nome da Escola</th>
-                <th>Diretor Principal</th>
-                <th>Status</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="escola in escolas" :key="escola.id">
-                <td>{{ escola.nome }}</td>
-                <td>
-                  <div v-if="escola.diretor">
-                    <strong>{{ escola.diretor.nome }}</strong>
-                    <br>
-                    <small class="text-muted">{{ escola.diretor.email }}</small>
-                  </div>
-                  <span v-else class="text-muted">Não atribuído</span>
-                </td>
-                <td>
-                  <span :class="`badge bg-${escola.ativo ? 'success' : 'secondary'}`">
-                    {{ escola.ativo ? 'Ativa' : 'Inativa' }}
-                  </span>
-                </td>
-                <td>
-                  <button class="btn btn-sm btn-outline-primary me-1" @click="showEscolaModal('edit', escola)">
-                    <i class="bi bi-pencil"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-info me-1" @click="showDiretorModal(escola)" :title="escola.diretor ? 'Alterar diretor' : 'Atribuir diretor'">
-                    <i class="bi bi-person-badge"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-danger" @click="deleteEscola(escola.id)">
-                    <i class="bi bi-trash"></i>
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+    <!-- Escolas Section - Apenas ADMIN -->
+    <template v-if="isAdmin">
+      <div class="row mb-4">
+        <div class="col-md-6">
+          <h2 class="fw-bold">
+            <i class="bi bi-building me-2"></i>Gestão de Escolas
+          </h2>
+        </div>
+        <div class="col-md-6 text-end">
+          <button class="btn btn-primary" @click="showEscolaModal('create')">
+            <i class="bi bi-plus-circle me-2"></i>Nova Escola
+          </button>
         </div>
       </div>
-    </div>
+
+      <div class="card shadow-sm mb-4">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Nome da Escola</th>
+                  <th>Diretor Principal</th>
+                  <th>Status</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="escola in escolas" :key="escola.id">
+                  <td>{{ escola.nome }}</td>
+                  <td>
+                    <div v-if="escola.diretor">
+                      <strong>{{ escola.diretor.nome }}</strong>
+                      <br>
+                      <small class="text-muted">{{ escola.diretor.email }}</small>
+                    </div>
+                    <span v-else class="text-muted">Não atribuído</span>
+                  </td>
+                  <td>
+                    <span :class="`badge bg-${escola.ativo ? 'success' : 'secondary'}`">
+                      {{ escola.ativo ? 'Ativa' : 'Inativa' }}
+                    </span>
+                  </td>
+                  <td>
+                    <button class="btn btn-sm btn-outline-primary me-1" @click="showEscolaModal('edit', escola)">
+                      <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-info me-1" @click="showDiretorModal(escola)" :title="escola.diretor ? 'Alterar diretor' : 'Atribuir diretor'">
+                      <i class="bi bi-person-badge"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" @click="deleteEscola(escola.id)">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <!-- Usuários Section -->
     <div class="row mb-4">
@@ -86,11 +88,11 @@
               <option value="ALUNO">Aluno</option>
               <option value="RESPONSAVEL">Responsável</option>
               <option value="PROFESSOR">Professor</option>
-              <option value="DIRETORIA">Diretoria</option>
-              <option value="ADMINISTRADOR">Administrador</option>
+              <option value="DIRETORIA" v-if="isAdmin">Diretoria</option>
+              <option value="ADMINISTRADOR" v-if="isAdmin">Administrador</option>
             </select>
           </div>
-          <div class="col-md-3">
+          <div class="col-md-3" v-if="isAdmin">
             <select class="form-select" v-model="filtros.escolaId">
               <option value="">Todas as escolas</option>
               <option v-for="escola in escolas" :key="escola.id" :value="escola.id">
@@ -181,8 +183,10 @@ import UsuarioModal from './modals/UsuarioModal.vue'
 import escolasService from '@/services/escolasService'
 import usuariosService from '@/services/usuariosService'
 import { useNotificationStore } from '@/stores/notifications'
+import { useAuthStore } from '@/stores/auth'
 
 const notifications = useNotificationStore()
+const authStore = useAuthStore()
 
 // Estado
 const escolas = ref([])
@@ -202,6 +206,9 @@ const selectedEscola = ref(null)
 const selectedUsuario = ref(null)
 
 // Computed
+const isAdmin = computed(() => authStore.userRole === 'ADMINISTRADOR')
+const isDiretoria = computed(() => authStore.userRole === 'DIRETORIA')
+
 const usuariosFiltrados = computed(() => {
   return usuarios.value.filter(usuario => {
     const matchBusca = usuario.nome.toLowerCase().includes(filtros.value.busca.toLowerCase()) ||
@@ -380,6 +387,7 @@ const loadUsuarios = async () => {
 
 // Inicialização
 onMounted(() => {
+  // Carregar escolas apenas para admin (diretoria carrega automaticamente a sua escola através da API)
   loadEscolas()
   loadUsuarios()
 })

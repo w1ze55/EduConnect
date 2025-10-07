@@ -26,13 +26,16 @@
                 class="form-select" 
                 v-model="formData.escolaId" 
                 required
-                :disabled="formData.role === 'ADMINISTRADOR'"
+                :disabled="formData.role === 'ADMINISTRADOR' || authStore.userRole === 'DIRETORIA'"
               >
                 <option value="">Selecione a escola</option>
                 <option v-for="escola in escolas" :key="escola.id" :value="escola.id">
                   {{ escola.nome }}
                 </option>
               </select>
+              <small v-if="authStore.userRole === 'DIRETORIA'" class="text-muted">
+                Como diretor, você só pode criar usuários para sua escola
+              </small>
             </div>
 
             <div class="mb-3">
@@ -134,25 +137,26 @@
               <h6 class="mb-3">Dados do Professor</h6>
               
               <div class="mb-3">
-                <label class="form-label">Formação Acadêmica</label>
-                <input
-                  type="text"
-                  class="form-control"
-                  v-model="formData.formacaoAcademica"
-                  required
-                  placeholder="Digite a formação acadêmica"
-                />
-              </div>
-
-              <div class="mb-3">
                 <label class="form-label">Disciplinas</label>
                 <input
                   type="text"
                   class="form-control"
                   v-model="formData.disciplinas"
                   required
-                  placeholder="Digite as disciplinas (separadas por vírgula)"
+                  placeholder="Ex: Matemática, Física, Química"
                 />
+                <small class="text-muted">Separe múltiplas disciplinas por vírgula</small>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label">Turmas (Opcional)</label>
+                <input
+                  type="text"
+                  class="form-control"
+                  v-model="formData.turmas"
+                  placeholder="Ex: 1A, 2B, 3C"
+                />
+                <small class="text-muted">Separe múltiplas turmas por vírgula</small>
               </div>
             </div>
 
@@ -181,6 +185,9 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import api from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 const props = defineProps({
   usuario: {
@@ -209,12 +216,13 @@ const formData = ref({
   role: '',
   escolaId: '',
   ativo: true,
-  // Campos específicos
+  // Campos específicos para ALUNO
   dataNascimento: '',
   turma: '',
   responsavelId: '',
-  formacaoAcademica: '',
-  disciplinas: ''
+  // Campos específicos para PROFESSOR
+  disciplinas: '',
+  turmas: ''
 })
 
 const responsaveisDisponiveis = ref([])
@@ -222,7 +230,21 @@ const responsaveisDisponiveis = ref([])
 onMounted(async () => {
   if (props.usuario) {
     formData.value = { ...props.usuario }
+    
+    // Converter arrays para strings para exibição no formulário
+    if (formData.value.role === 'PROFESSOR') {
+      if (Array.isArray(formData.value.disciplinas)) {
+        formData.value.disciplinas = formData.value.disciplinas.join(', ')
+      }
+      if (Array.isArray(formData.value.turmas)) {
+        formData.value.turmas = formData.value.turmas.join(', ')
+      }
+    }
+  } else if (authStore.userRole === 'DIRETORIA' && authStore.user?.escolaId) {
+    // Se for diretor, pré-selecionar sua escola
+    formData.value.escolaId = authStore.user.escolaId
   }
+  
   if (formData.value.role === 'ALUNO') {
     await loadResponsaveis()
   }
@@ -246,7 +268,10 @@ const loadResponsaveis = async () => {
 }
 
 const canCreateRole = (role) => {
-  // TODO: Implementar lógica de permissão baseada no usuário atual
+  // Apenas administradores podem criar ADMINISTRADOR e DIRETORIA
+  if (role === 'ADMINISTRADOR' || role === 'DIRETORIA') {
+    return authStore.userRole === 'ADMINISTRADOR'
+  }
   return true
 }
 
@@ -257,8 +282,8 @@ const handleRoleChange = () => {
     dataNascimento: '',
     turma: '',
     responsavelId: '',
-    formacaoAcademica: '',
-    disciplinas: ''
+    disciplinas: '',
+    turmas: ''
   }
   
   // Limpar escola se for administrador
@@ -274,6 +299,26 @@ const handleSubmit = () => {
   // Se estiver editando e a senha estiver vazia, remover do objeto
   if (props.mode === 'edit' && (!dadosParaEnviar.senha || dadosParaEnviar.senha.trim() === '')) {
     delete dadosParaEnviar.senha
+  }
+  
+  // Converter disciplinas de string para array (para PROFESSOR)
+  if (dadosParaEnviar.role === 'PROFESSOR' && dadosParaEnviar.disciplinas) {
+    if (typeof dadosParaEnviar.disciplinas === 'string') {
+      dadosParaEnviar.disciplinas = dadosParaEnviar.disciplinas
+        .split(',')
+        .map(d => d.trim())
+        .filter(d => d.length > 0)
+    }
+  }
+  
+  // Converter turmas de string para array (para PROFESSOR) se existir
+  if (dadosParaEnviar.role === 'PROFESSOR' && dadosParaEnviar.turmas) {
+    if (typeof dadosParaEnviar.turmas === 'string') {
+      dadosParaEnviar.turmas = dadosParaEnviar.turmas
+        .split(',')
+        .map(t => t.trim())
+        .filter(t => t.length > 0)
+    }
   }
   
   // Validar campos obrigatórios
