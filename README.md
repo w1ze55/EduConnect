@@ -46,6 +46,7 @@ docker-compose up -d --build
 | 👨‍🏫 **Professor** | professor@educonnect.com | prof123 |
 | 🎓 **Aluno** | aluno@educonnect.com | aluno123 |
 | 👨‍👩‍👧 **Responsável** | responsavel@educonnect.com | resp123 |
+| 👨‍🏫 **Diretoria** | diretoria@educonnect.com | dir123 |
 
 ## 📦 Tecnologias
 
