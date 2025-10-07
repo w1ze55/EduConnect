@@ -97,6 +97,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import api from '@/services/api'
 
 const props = defineProps({
   escola: {
@@ -121,16 +122,12 @@ const formData = ref({
 
 onMounted(async () => {
   try {
-    const response = await fetch('/api/usuarios/diretores-disponiveis', {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    })
-    if (response.ok) {
-      diretoresDisponiveis.value = await response.json()
-    }
+    const response = await api.get('/usuarios/diretores-disponiveis')
+    diretoresDisponiveis.value = response.data
+    console.log('Diretores disponíveis carregados:', diretoresDisponiveis.value)
   } catch (error) {
     console.error('Erro ao carregar diretores:', error)
+    console.error('Detalhes do erro:', error.response)
   }
 })
 

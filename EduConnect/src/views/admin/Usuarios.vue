@@ -29,7 +29,14 @@
             <tbody>
               <tr v-for="escola in escolas" :key="escola.id">
                 <td>{{ escola.nome }}</td>
-                <td>{{ escola.diretor?.nome || 'Não atribuído' }}</td>
+                <td>
+                  <div v-if="escola.diretor">
+                    <strong>{{ escola.diretor.nome }}</strong>
+                    <br>
+                    <small class="text-muted">{{ escola.diretor.email }}</small>
+                  </div>
+                  <span v-else class="text-muted">Não atribuído</span>
+                </td>
                 <td>
                   <span :class="`badge bg-${escola.ativo ? 'success' : 'secondary'}`">
                     {{ escola.ativo ? 'Ativa' : 'Inativa' }}
@@ -39,7 +46,7 @@
                   <button class="btn btn-sm btn-outline-primary me-1" @click="showEscolaModal('edit', escola)">
                     <i class="bi bi-pencil"></i>
                   </button>
-                  <button class="btn btn-sm btn-outline-info me-1" @click="showDiretorModal(escola)">
+                  <button class="btn btn-sm btn-outline-info me-1" @click="showDiretorModal(escola)" :title="escola.diretor ? 'Alterar diretor' : 'Atribuir diretor'">
                     <i class="bi bi-person-badge"></i>
                   </button>
                   <button class="btn btn-sm btn-outline-danger" @click="deleteEscola(escola.id)">
@@ -107,10 +114,18 @@
             </thead>
             <tbody>
               <tr v-for="usuario in usuariosFiltrados" :key="usuario.id">
-                <td>{{ usuario.nome }}</td>
+                <td>
+                  <strong>{{ usuario.nome }}</strong>
+                  <div v-if="usuario.role === 'ALUNO' && usuario.responsavelNome" class="small text-muted">
+                    Responsável: {{ usuario.responsavelNome }}
+                  </div>
+                </td>
                 <td>{{ usuario.email }}</td>
                 <td><span class="badge bg-info">{{ usuario.role }}</span></td>
-                <td>{{ usuario.escola?.nome || '-' }}</td>
+                <td>
+                  <span v-if="usuario.escolaNome">{{ usuario.escolaNome }}</span>
+                  <span v-else class="text-muted">-</span>
+                </td>
                 <td>
                   <span :class="`badge bg-${usuario.ativo ? 'success' : 'secondary'}`">
                     {{ usuario.ativo ? 'Ativo' : 'Inativo' }}

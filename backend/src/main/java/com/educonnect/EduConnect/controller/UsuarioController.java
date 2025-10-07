@@ -73,7 +73,7 @@ public class UsuarioController {
     }
     
     @GetMapping("/diretores-disponiveis")
-    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'DIRETORIA')")
     public ResponseEntity<List<UsuarioDTO>> listarDiretoresDisponiveis() {
         return ResponseEntity.ok(usuarioService.listarDiretoresDisponiveis());
     }

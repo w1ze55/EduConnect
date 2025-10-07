@@ -180,6 +180,7 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue'
+import api from '@/services/api'
 
 const props = defineProps({
   usuario: {
@@ -235,19 +236,10 @@ watch(() => formData.value.role, async (newRole) => {
 
 const loadResponsaveis = async () => {
   try {
-    const url = formData.value.escolaId 
-      ? `/api/usuarios/responsaveis-disponiveis?escolaId=${formData.value.escolaId}`
-      : '/api/usuarios/responsaveis-disponiveis'
-    
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${localStorage.getItem('token')}`
-      }
-    })
-    
-    if (response.ok) {
-      responsaveisDisponiveis.value = await response.json()
-    }
+    const params = formData.value.escolaId ? { escolaId: formData.value.escolaId } : {}
+    const response = await api.get('/usuarios/responsaveis-disponiveis', { params })
+    responsaveisDisponiveis.value = response.data
+    console.log('Responsáveis disponíveis carregados:', responsaveisDisponiveis.value)
   } catch (error) {
     console.error('Erro ao carregar responsáveis:', error)
   }
