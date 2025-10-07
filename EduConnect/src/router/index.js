@@ -13,12 +13,6 @@ const routes = [
     meta: { requiresGuest: true }
   },
   {
-    path: '/cadastro',
-    name: 'Cadastro',
-    component: () => import('../views/auth/Cadastro.vue'),
-    meta: { requiresGuest: true }
-  },
-  {
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('../views/Dashboard.vue'),

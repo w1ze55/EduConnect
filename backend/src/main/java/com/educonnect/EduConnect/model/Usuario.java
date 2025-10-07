@@ -69,6 +69,11 @@ public class Usuario implements UserDetails {
     @Column(name = "turma")
     private List<String> turmas;
     
+    // Relacionamento com Escola
+    @ManyToOne
+    @JoinColumn(name = "escola_id")
+    private Escola escola;
+    
     // Relacionamento RESPONSAVEL <-> ALUNO
     @ManyToOne
     @JoinColumn(name = "responsavel_id")

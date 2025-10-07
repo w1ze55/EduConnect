@@ -122,23 +122,23 @@ const notificationStore = useNotificationStore()
 
 const atividade = ref({
   id: route.params.id,
-  titulo: 'Trabalho de Matemática - Equações',
-  disciplina: 'Matemática',
-  descricao: 'Resolver os exercícios do capítulo 5 sobre equações do segundo grau. Entregar resolução completa com todos os cálculos.',
-  dataEntrega: '30/09/2025 23:59',
-  professor: 'Prof. Carlos Santos',
+  titulo: '',
+  disciplina: '',
+  descricao: '',
+  dataEntrega: '',
+  professor: '',
   status: 'pendente',
-  valor: 10,
-  peso: 2,
-  tentativas: 1,
-  anexos: [
-    { id: 1, nome: 'exercicios-cap5.pdf' }
-  ],
+  valor: 0,
+  peso: 0,
+  tentativas: 0,
+  anexos: [],
   nota: null,
   dataEnvio: null,
   respostaAluno: null,
   feedback: null
 })
+
+// TODO: Carregar dados da atividade do backend baseado no ID
 
 const resposta = ref({
   comentario: '',

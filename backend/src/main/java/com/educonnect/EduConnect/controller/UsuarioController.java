@@ -1,10 +1,14 @@
 package com.educonnect.EduConnect.controller;
 
+import com.educonnect.EduConnect.dto.UsuarioCreateDTO;
 import com.educonnect.EduConnect.dto.UsuarioDTO;
 import com.educonnect.EduConnect.model.Usuario;
 import com.educonnect.EduConnect.repository.UsuarioRepository;
+import com.educonnect.EduConnect.service.UsuarioService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,6 +26,7 @@ import java.util.stream.Collectors;
 public class UsuarioController {
     
     private final UsuarioRepository usuarioRepository;
+    private final UsuarioService usuarioService;
     private final ModelMapper modelMapper;
     private final PasswordEncoder passwordEncoder;
     
@@ -29,7 +34,18 @@ public class UsuarioController {
     public ResponseEntity<List<UsuarioDTO>> getAllUsuarios() {
         List<Usuario> usuarios = usuarioRepository.findAll();
         List<UsuarioDTO> dtos = usuarios.stream()
-            .map(u -> modelMapper.map(u, UsuarioDTO.class))
+            .map(u -> {
+                UsuarioDTO dto = modelMapper.map(u, UsuarioDTO.class);
+                if (u.getEscola() != null) {
+                    dto.setEscolaId(u.getEscola().getId());
+                    dto.setEscolaNome(u.getEscola().getNome());
+                }
+                if (u.getResponsavel() != null) {
+                    dto.setResponsavelId(u.getResponsavel().getId());
+                    dto.setResponsavelNome(u.getResponsavel().getNome());
+                }
+                return dto;
+            })
             .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
@@ -38,7 +54,33 @@ public class UsuarioController {
     public ResponseEntity<UsuarioDTO> getUsuarioById(@PathVariable Long id) {
         Usuario usuario = usuarioRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
-        return ResponseEntity.ok(modelMapper.map(usuario, UsuarioDTO.class));
+        UsuarioDTO dto = modelMapper.map(usuario, UsuarioDTO.class);
+        if (usuario.getEscola() != null) {
+            dto.setEscolaId(usuario.getEscola().getId());
+            dto.setEscolaNome(usuario.getEscola().getNome());
+        }
+        if (usuario.getResponsavel() != null) {
+            dto.setResponsavelId(usuario.getResponsavel().getId());
+            dto.setResponsavelNome(usuario.getResponsavel().getNome());
+        }
+        return ResponseEntity.ok(dto);
+    }
+    
+    @PostMapping
+    public ResponseEntity<UsuarioDTO> criarUsuario(@Valid @RequestBody UsuarioCreateDTO dto) {
+        UsuarioDTO usuario = usuarioService.criar(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(usuario);
+    }
+    
+    @GetMapping("/diretores-disponiveis")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<List<UsuarioDTO>> listarDiretoresDisponiveis() {
+        return ResponseEntity.ok(usuarioService.listarDiretoresDisponiveis());
+    }
+    
+    @GetMapping("/responsaveis-disponiveis")
+    public ResponseEntity<List<UsuarioDTO>> listarResponsaveisDisponiveis(@RequestParam(required = false) Long escolaId) {
+        return ResponseEntity.ok(usuarioService.listarResponsaveisDisponiveis(escolaId));
     }
     
     @GetMapping("/alunos")
@@ -53,7 +95,13 @@ public class UsuarioController {
                 UsuarioDTO dto = modelMapper.map(u, UsuarioDTO.class);
                 // Adicionar nome do responsável se existir
                 if (u.getResponsavel() != null) {
+                    dto.setResponsavelId(u.getResponsavel().getId());
                     dto.setResponsavelNome(u.getResponsavel().getNome());
+                }
+                // Adicionar escola se existir
+                if (u.getEscola() != null) {
+                    dto.setEscolaId(u.getEscola().getId());
+                    dto.setEscolaNome(u.getEscola().getNome());
                 }
                 return dto;
             })
@@ -63,23 +111,14 @@ public class UsuarioController {
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<UsuarioDTO> atualizarUsuario(@PathVariable Long id, @RequestBody Usuario usuario) {
-        Usuario usuarioExistente = usuarioRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
-        
-        usuarioExistente.setNome(usuario.getNome());
-        usuarioExistente.setTelefone(usuario.getTelefone());
-        usuarioExistente.setRole(usuario.getRole());
-        usuarioExistente.setAtivo(usuario.getAtivo());
-        
-        Usuario updated = usuarioRepository.save(usuarioExistente);
-        return ResponseEntity.ok(modelMapper.map(updated, UsuarioDTO.class));
+    public ResponseEntity<UsuarioDTO> atualizarUsuario(@PathVariable Long id, @Valid @RequestBody UsuarioCreateDTO dto) {
+        return ResponseEntity.ok(usuarioService.atualizar(id, dto));
     }
     
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletarUsuario(@PathVariable Long id) {
-        usuarioRepository.deleteById(id);
-        return ResponseEntity.ok().build();
+        usuarioService.deletar(id);
+        return ResponseEntity.noContent().build();
     }
     
     @PutMapping("/perfil")

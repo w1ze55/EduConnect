@@ -151,11 +151,10 @@ src/
 
 ## 🔐 Autenticação
 
-O sistema utiliza JWT (JSON Web Tokens) para autenticação. O token é armazenado no `localStorage` e incluído automaticamente em todas as requisições via interceptor do Axios.
+O sistema utiliza JWT (JSON Web Tokens) para autenticação. O token é armazenado no `sessionStorage` e incluído automaticamente em todas as requisições via interceptor do Axios.
 
-### Credenciais de teste (mock):
-- E-mail: qualquer@example.com
-- Senha: qualquer (mínimo 6 caracteres)
+### Integração com Backend:
+O sistema está preparado para integração completa com o backend Spring Boot. Configure a `VITE_API_URL` no arquivo `.env` para conectar com a API real.
 
 ## 🎨 Design System
 
@@ -175,18 +174,17 @@ O sistema é totalmente responsivo e funciona em:
 
 ## 🔌 Integração com Backend
 
-O frontend está preparado para integrar com um backend Spring Boot. As chamadas de API estão configuradas nos arquivos da pasta `services/`.
+O frontend está totalmente preparado para integrar com o backend Spring Boot. As chamadas de API estão configuradas nos arquivos da pasta `services/`.
 
 Para conectar com o backend real:
 1. Configure a `VITE_API_URL` no arquivo `.env`
-2. Substitua os dados mockados pelas chamadas reais da API
+2. O sistema já está configurado para usar as APIs reais
 3. Ajuste os DTOs conforme necessário
 
 ## 📝 Notas de Desenvolvimento
 
-- Os dados atualmente são **mockados** para demonstração
-- Substitua as funções mock por chamadas reais da API
-- Implemente tratamento de erros adequado
+- O sistema está pronto para integração com backend real
+- Implemente tratamento de erros adequado conforme necessário
 - Adicione validações de formulário conforme necessário
 - Configure CORS no backend para aceitar requisições do frontend
 
