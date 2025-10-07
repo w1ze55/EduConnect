@@ -12,7 +12,7 @@ Sistema completo de gestão escolar desenvolvido com **Vue.js 3** (frontend) e *
 - 📄 **Documentos Digitais** com assinatura
 - 💰 **Módulo Financeiro** para responsáveis
 - ⚙️ **Painel Administrativo** completo
-- 🎨 **Design Responsivo** (Desktop, Tablet, Mobile)
+- 🎨 **Design Responsivo** (Em breve)
 - 🐳 **100% Dockerizado**
 
 ## 🔐 Credenciais de Teste
