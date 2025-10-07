@@ -15,24 +15,6 @@ Sistema completo de gestão escolar desenvolvido com **Vue.js 3** (frontend) e *
 - 🎨 **Design Responsivo** (Desktop, Tablet, Mobile)
 - 🐳 **100% Dockerizado**
 
-## 🚀 Quick Start (Docker)
-
-### Windows
-```powershell
-.\start.ps1
-```
-
-### Linux/Mac
-```bash
-chmod +x start.sh
-./start.sh
-```
-
-### Manual
-```bash
-docker-compose up -d --build
-```
-
 **Aguarde ~60 segundos** e acesse:
 - **Frontend**: http://localhost:3000
 - **Backend**: http://localhost:8080

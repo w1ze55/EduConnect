@@ -71,6 +71,12 @@ const menuItems = [
     roles: ['DIRETORIA', 'ADMINISTRADOR']
   },
   { 
+    path: '/admin/turmas', 
+    label: 'Turmas', 
+    icon: 'bi bi-diagram-3-fill',
+    roles: ['DIRETORIA', 'ADMINISTRADOR']
+  },
+  { 
     path: '/admin/estatisticas', 
     label: 'Estatísticas', 
     icon: 'bi bi-graph-up',

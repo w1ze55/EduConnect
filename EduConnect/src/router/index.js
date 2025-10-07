@@ -79,6 +79,12 @@ const routes = [
     meta: { requiresAuth: true, roles: ['DIRETORIA', 'ADMINISTRADOR'] }
   },
   {
+    path: '/admin/turmas',
+    name: 'AdminTurmas',
+    component: () => import('../views/admin/Turmas.vue'),
+    meta: { requiresAuth: true, roles: ['DIRETORIA', 'ADMINISTRADOR'] }
+  },
+  {
     path: '/admin/estatisticas',
     name: 'AdminEstatisticas',
     component: () => import('../views/admin/Estatisticas.vue'),
