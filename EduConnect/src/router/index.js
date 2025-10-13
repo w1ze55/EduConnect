@@ -13,12 +13,6 @@ const routes = [
     meta: { requiresGuest: true }
   },
   {
-    path: '/cadastro',
-    name: 'Cadastro',
-    component: () => import('../views/auth/Cadastro.vue'),
-    meta: { requiresGuest: true }
-  },
-  {
     path: '/dashboard',
     name: 'Dashboard',
     component: () => import('../views/Dashboard.vue'),
@@ -82,6 +76,12 @@ const routes = [
     path: '/admin/usuarios',
     name: 'AdminUsuarios',
     component: () => import('../views/admin/Usuarios.vue'),
+    meta: { requiresAuth: true, roles: ['DIRETORIA', 'ADMINISTRADOR'] }
+  },
+  {
+    path: '/admin/turmas',
+    name: 'AdminTurmas',
+    component: () => import('../views/admin/Turmas.vue'),
     meta: { requiresAuth: true, roles: ['DIRETORIA', 'ADMINISTRADOR'] }
   },
   {

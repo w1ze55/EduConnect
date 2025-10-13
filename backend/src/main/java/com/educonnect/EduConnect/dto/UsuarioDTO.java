@@ -20,5 +20,7 @@ public class UsuarioDTO {
     private List<String> turmas;
     private Long responsavelId;
     private String responsavelNome;
+    private Long escolaId;
+    private String escolaNome;
 }
 

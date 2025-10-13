@@ -74,27 +74,7 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     
-    async register(userData) {
-      try {
-        const response = await api.post('/auth/register', userData)
-        // Backend retorna apenas UsuarioDTO, não retorna token automaticamente
-        // Então após registrar, fazemos login
-        if (response.data) {
-          // Fazer login após registro bem-sucedido
-          const loginResult = await this.login({
-            email: userData.email,
-            password: userData.password
-          })
-          return loginResult
-        }
-        return { success: true }
-      } catch (error) {
-        return { 
-          success: false, 
-          message: error.response?.data?.message || 'Erro ao fazer cadastro' 
-        }
-      }
-    },
+    // Cadastro público removido - apenas admins e diretores podem cadastrar usuários
     
     logout() {
       console.log('👋 [AUTH] Fazendo logout')

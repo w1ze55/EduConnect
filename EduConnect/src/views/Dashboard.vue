@@ -210,29 +210,9 @@ const stats = ref({
 const recadosRecentes = ref([])
 const atividadesPendentes = ref([])
 
-const proximosEventos = ref([
-  {
-    id: 1,
-    titulo: 'Prova de Matemática',
-    dia: '15',
-    mes: 'OUT',
-    horario: '14:00'
-  },
-  {
-    id: 2,
-    titulo: 'Feira de Ciências',
-    dia: '20',
-    mes: 'OUT',
-    horario: '09:00'
-  },
-  {
-    id: 3,
-    titulo: 'Reunião de Pais',
-    dia: '25',
-    mes: 'OUT',
-    horario: '19:00'
-  }
-])
+const proximosEventos = ref([])
+
+// TODO: Carregar eventos do backend
 
 const getPrazoClass = (prazo) => {
   if (prazo.includes('Hoje')) return 'bg-danger'
@@ -241,27 +221,21 @@ const getPrazoClass = (prazo) => {
 }
 
 onMounted(async () => {
-  // Carregar dados do dashboard baseado no perfil
+  // Carregar dados do dashboard do backend
   try {
-    const { getMockDataForUser } = await import('../data/mockUsers.js')
-    const user = authStore.user
+    // TODO: Implementar chamadas para API real
+    console.log('📊 [DASHBOARD] Carregando dados do usuário:', authStore.user?.role)
     
-    if (user) {
-      const mockData = getMockDataForUser(user)
-      
-      // Atualizar stats
-      stats.value = mockData.stats
-      
-      // Atualizar recados recentes
-      if (mockData.recadosRecentes) {
-        recadosRecentes.value = mockData.recadosRecentes
-      }
-      
-      // Atualizar atividades pendentes
-      if (mockData.atividadesPendentes) {
-        atividadesPendentes.value = mockData.atividadesPendentes
-      }
+    // Por enquanto, deixar dados vazios até integração com backend
+    stats.value = {
+      recados: 0,
+      atividades: 0,
+      eventos: 0,
+      documentos: 0
     }
+    
+    recadosRecentes.value = []
+    atividadesPendentes.value = []
   } catch (error) {
     console.error('Erro ao carregar dados do dashboard:', error)
   }

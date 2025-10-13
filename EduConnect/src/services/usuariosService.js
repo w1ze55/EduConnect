@@ -1,27 +1,63 @@
 import api from './api'
 
 export default {
-  getAllUsuarios() {
-    return api.get('/usuarios')
+  async listar() {
+    const response = await api.get('/usuarios')
+    return response.data
+  },
+
+  async getAllUsuarios() {
+    const response = await api.get('/usuarios')
+    return response.data
   },
   
-  getUsuarioById(id) {
-    return api.get(`/usuarios/${id}`)
+  async getUsuarioById(id) {
+    const response = await api.get(`/usuarios/${id}`)
+    return response.data
   },
   
-  getAlunos() {
-    return api.get('/usuarios/alunos')
+  async getAlunos() {
+    const response = await api.get('/usuarios/alunos')
+    return response.data
+  },
+
+  async criar(usuarioData) {
+    const response = await api.post('/usuarios', usuarioData)
+    return response.data
   },
   
-  atualizarUsuario(id, data) {
-    return api.put(`/usuarios/${id}`, data)
+  async atualizar(id, data) {
+    const response = await api.put(`/usuarios/${id}`, data)
+    return response.data
+  },
+
+  async atualizarUsuario(id, data) {
+    const response = await api.put(`/usuarios/${id}`, data)
+    return response.data
   },
   
-  deletarUsuario(id) {
-    return api.delete(`/usuarios/${id}`)
+  async deletar(id) {
+    const response = await api.delete(`/usuarios/${id}`)
+    return response.data
+  },
+
+  async deletarUsuario(id) {
+    const response = await api.delete(`/usuarios/${id}`)
+    return response.data
   },
   
-  atualizarPerfil(data) {
-    return api.put('/usuarios/perfil', data)
+  async atualizarPerfil(data) {
+    const response = await api.put('/usuarios/perfil', data)
+    return response.data
+  },
+
+  async listarPorRole(role) {
+    const response = await api.get(`/usuarios?role=${role}`)
+    return response.data
+  },
+
+  async listarPorEscola(escolaId) {
+    const response = await api.get(`/usuarios?escolaId=${escolaId}`)
+    return response.data
   }
 }

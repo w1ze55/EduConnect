@@ -93,56 +93,6 @@
                 </a>
               </div>
               
-              <hr class="my-4">
-              
-              <div class="text-center">
-                <p class="mb-2 text-muted small">Não tem uma conta?</p>
-                <router-link to="/cadastro" class="btn btn-outline-primary w-100">
-                  Criar conta
-                </router-link>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Credenciais de Teste -->
-          <div class="card shadow-lg border-0 mt-3">
-            <div class="card-body p-3">
-              <h6 class="text-center mb-3 text-primary">
-                <i class="bi bi-info-circle me-2"></i>Credenciais de Teste
-              </h6>
-              <div class="row g-2 small">
-                <div class="col-6">
-                  <div class="credential-box" @click="fillCredentials('admin@educonnect.com', 'admin123')">
-                    <strong>👤 Admin</strong>
-                    <div class="text-muted">admin@educonnect.com</div>
-                    <div class="text-muted">Senha: admin123</div>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <div class="credential-box" @click="fillCredentials('professor@educonnect.com', 'prof123')">
-                    <strong>👨‍🏫 Professor</strong>
-                    <div class="text-muted">professor@educonnect.com</div>
-                    <div class="text-muted">Senha: prof123</div>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <div class="credential-box" @click="fillCredentials('aluno@educonnect.com', 'aluno123')">
-                    <strong>🎓 Aluno</strong>
-                    <div class="text-muted">aluno@educonnect.com</div>
-                    <div class="text-muted">Senha: aluno123</div>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <div class="credential-box" @click="fillCredentials('responsavel@educonnect.com', 'resp123')">
-                    <strong>👨‍👩‍👧 Responsável</strong>
-                    <div class="text-muted">responsavel@educonnect.com</div>
-                    <div class="text-muted">Senha: resp123</div>
-                  </div>
-                </div>
-              </div>
-              <p class="text-center text-muted mt-2 mb-0" style="font-size: 0.75rem;">
-                <i class="bi bi-hand-index me-1"></i>Clique para preencher automaticamente
-              </p>
             </div>
           </div>
         </div>
@@ -187,11 +137,6 @@ const validateForm = () => {
   }
   
   return Object.keys(errors.value).length === 0
-}
-
-const fillCredentials = (email, password) => {
-  form.value.email = email
-  form.value.password = password
 }
 
 const handleLogin = async () => {
@@ -258,16 +203,6 @@ const handleLogin = async () => {
   background-color: #667eea;
   border-color: #667eea;
   color: white;
-}
-
-.credential-box {
-  padding: 0.75rem;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  background-color: white;
-  height: 100%;
 }
 
 .credential-box:hover {
