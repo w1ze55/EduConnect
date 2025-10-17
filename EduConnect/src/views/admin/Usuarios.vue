@@ -320,6 +320,9 @@ const saveDiretor = async (diretorData) => {
 
 // Métodos - Usuário
 const showUsuarioModal = (mode, usuario = null) => {
+  console.log('🔄 Abrindo modal de usuário - Modo:', mode)
+  console.log('📋 Escolas disponíveis para o modal:', escolas.value)
+  console.log('👤 Usuário atual:', authStore.user)
   modalMode.value = mode
   selectedUsuario.value = usuario ? { ...usuario } : null
   showingUsuarioModal.value = true
@@ -369,9 +372,11 @@ const deleteUsuario = async (usuarioId) => {
 // Carregamento de dados
 const loadEscolas = async () => {
   try {
+    console.log('🔄 Carregando escolas...')
     escolas.value = await escolasService.listarTodas()
+    console.log('✅ Escolas carregadas:', escolas.value)
   } catch (error) {
-    console.error('Erro ao carregar escolas:', error)
+    console.error('❌ Erro ao carregar escolas:', error)
     notifications.error('Erro ao carregar escolas')
   }
 }

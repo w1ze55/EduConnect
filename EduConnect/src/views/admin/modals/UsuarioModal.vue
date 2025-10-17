@@ -20,12 +20,19 @@
               </select>
             </div>
 
+            <!-- Alerta para cadastro de aluno -->
+            <div v-if="formData.role === 'ALUNO'" class="alert alert-warning" role="alert">
+              <i class="bi bi-exclamation-triangle-fill me-2"></i>
+              <strong>Atenção!</strong> Para cadastrar um aluno você deve vincular à um responsável. 
+              <strong>Cadastre o responsável primeiro!</strong>
+            </div>
+
             <div class="mb-3">
               <label class="form-label">Escola</label>
               <select 
                 class="form-select" 
                 v-model="formData.escolaId" 
-                required
+                :required="formData.role !== 'ADMINISTRADOR'"
                 :disabled="formData.role === 'ADMINISTRADOR' || authStore.userRole === 'DIRETORIA'"
               >
                 <option value="">Selecione a escola</option>
@@ -33,8 +40,14 @@
                   {{ escola.nome }}
                 </option>
               </select>
-              <small v-if="authStore.userRole === 'DIRETORIA'" class="text-muted">
-                Como diretor, você só pode criar usuários para sua escola
+              <div v-if="authStore.userRole === 'DIRETORIA'" class="alert alert-success mt-2 mb-0 py-2">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                <strong>Escola vinculada: </strong> 
+                <span v-if="escolaNomeDoUsuario">{{ escolaNomeDoUsuario }}</span>
+                <span v-else class="text-muted fst-italic">{{ escolas.length > 0 ? escolas[0].nome : 'Carregando...' }}</span>
+              </div>
+              <small v-if="formData.role === 'ADMINISTRADOR'" class="text-muted">
+                Administradores não são vinculados a uma escola específica
               </small>
             </div>
 
@@ -183,7 +196,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 
@@ -227,7 +240,19 @@ const formData = ref({
 
 const responsaveisDisponiveis = ref([])
 
+// Computed para mostrar o nome da escola do diretor
+const escolaNomeDoUsuario = computed(() => {
+  
+  if (authStore.userRole === 'DIRETORIA' && formData.value.escolaId) {
+    const escolaIdNum = Number(formData.value.escolaId)
+    const escola = props.escolas.find(e => Number(e.id) === escolaIdNum)
+    return escola?.nome || 'Carregando...'
+  }
+  return ''
+})
+
 onMounted(async () => {
+  
   if (props.usuario) {
     formData.value = { ...props.usuario }
     
@@ -241,7 +266,6 @@ onMounted(async () => {
       }
     }
   } else if (authStore.userRole === 'DIRETORIA' && authStore.user?.escolaId) {
-    // Se for diretor, pré-selecionar sua escola
     formData.value.escolaId = authStore.user.escolaId
   }
   
@@ -268,7 +292,6 @@ const loadResponsaveis = async () => {
 }
 
 const canCreateRole = (role) => {
-  // Apenas administradores podem criar ADMINISTRADOR e DIRETORIA
   if (role === 'ADMINISTRADOR' || role === 'DIRETORIA') {
     return authStore.userRole === 'ADMINISTRADOR'
   }

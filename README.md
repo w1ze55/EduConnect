@@ -28,6 +28,7 @@ Sistema completo de gestão escolar desenvolvido com **Vue.js 3** (frontend) e *
 | 👨‍🏫 **Professor** | professor@educonnect.com | prof123 |
 | 🎓 **Aluno** | aluno@educonnect.com | aluno123 |
 | 👨‍👩‍👧 **Responsável** | responsavel@educonnect.com | resp123 |
+| **Diretoria** | diretoria@educonnect.com | prof123 |
 
 ## 📦 Tecnologias
 
