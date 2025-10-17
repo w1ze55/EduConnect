@@ -3,9 +3,11 @@ package com.educonnect.EduConnect.service;
 import com.educonnect.EduConnect.dto.UsuarioCreateDTO;
 import com.educonnect.EduConnect.dto.UsuarioDTO;
 import com.educonnect.EduConnect.model.Escola;
+import com.educonnect.EduConnect.model.Turma;
 import com.educonnect.EduConnect.model.Usuario;
 import com.educonnect.EduConnect.model.enums.Role;
 import com.educonnect.EduConnect.repository.EscolaRepository;
+import com.educonnect.EduConnect.repository.TurmaRepository;
 import com.educonnect.EduConnect.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +23,7 @@ public class UsuarioService {
     
     private final UsuarioRepository usuarioRepository;
     private final EscolaRepository escolaRepository;
+    private final TurmaRepository turmaRepository;
     private final PasswordEncoder passwordEncoder;
     
     @Transactional(readOnly = true)
@@ -130,6 +133,23 @@ public class UsuarioService {
         }
         
         usuario = usuarioRepository.save(usuario);
+        
+        // Se for ALUNO e tiver turmaId, adicionar o aluno à turma
+        if (dto.getRole() == Role.ALUNO && dto.getTurmaId() != null) {
+            Turma turma = turmaRepository.findById(dto.getTurmaId())
+                    .orElseThrow(() -> new RuntimeException("Turma não encontrada"));
+            
+            // Adicionar aluno à lista de alunos da turma
+            if (turma.getAlunos() == null) {
+                turma.setAlunos(new java.util.ArrayList<>());
+            }
+            
+            if (!turma.getAlunos().contains(usuario)) {
+                turma.getAlunos().add(usuario);
+                turmaRepository.save(turma);
+            }
+        }
+        
         return convertToDTO(usuario);
     }
     
@@ -179,6 +199,22 @@ public class UsuarioService {
             usuario.setResponsavel(responsavel);
             usuario.setTurma(dto.getTurma());
             usuario.setMatricula(dto.getMatricula());
+            
+            // Se turmaId mudou, atualizar vínculo
+            if (dto.getTurmaId() != null) {
+                Turma turma = turmaRepository.findById(dto.getTurmaId())
+                        .orElseThrow(() -> new RuntimeException("Turma não encontrada"));
+                
+                // Adicionar aluno à nova turma se ainda não estiver
+                if (turma.getAlunos() == null) {
+                    turma.setAlunos(new java.util.ArrayList<>());
+                }
+                
+                if (!turma.getAlunos().contains(usuario)) {
+                    turma.getAlunos().add(usuario);
+                    turmaRepository.save(turma);
+                }
+            }
         }
         
         // Atualizar campos específicos para PROFESSOR

@@ -44,6 +44,7 @@ public class UsuarioCreateDTO {
     private String matricula;
     private String dataNascimento;
     private Long responsavelId; // Obrigatório para ALUNO
+    private Long turmaId; // ID da turma para vincular o aluno automaticamente
     
     // Campos específicos para PROFESSOR
     private String formacaoAcademica;

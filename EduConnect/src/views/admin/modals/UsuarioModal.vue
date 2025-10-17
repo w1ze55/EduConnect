@@ -32,17 +32,17 @@
               <select 
                 class="form-select" 
                 v-model="formData.escolaId" 
-                :required="formData.role !== 'ADMINISTRADOR'"
-                :disabled="formData.role === 'ADMINISTRADOR' || authStore.userRole === 'DIRETORIA'"
+                :required="formData.role !== 'ADMINISTRADOR' && authStore.userRole !== 'DIRETORIA'"
+                :disabled="formData.role === 'ADMINISTRADOR'"
               >
                 <option value="">Selecione a escola</option>
                 <option v-for="escola in escolas" :key="escola.id" :value="escola.id">
                   {{ escola.nome }}
                 </option>
               </select>
-              <div v-if="authStore.userRole === 'DIRETORIA'" class="alert alert-success mt-2 mb-0 py-2">
+              <div v-if="authStore.userRole === 'DIRETORIA' && formData.escolaId" class="alert alert-success mt-2 mb-0 py-2">
                 <i class="bi bi-check-circle-fill me-2"></i>
-                <strong>Escola vinculada: </strong> 
+                <strong>Escola automaticamente vinculada: </strong> 
                 <span v-if="escolaNomeDoUsuario">{{ escolaNomeDoUsuario }}</span>
                 <span v-else class="text-muted fst-italic">{{ escolas.length > 0 ? escolas[0].nome : 'Carregando...' }}</span>
               </div>
@@ -121,14 +121,16 @@
               </div>
 
               <div class="mb-3">
-                <label class="form-label">Série/Turma</label>
-                <input
-                  type="text"
-                  class="form-control"
-                  v-model="formData.turma"
-                  required
-                  placeholder="Digite a série/turma"
-                />
+                <label class="form-label">Turma</label>
+                <select class="form-select" v-model="formData.turmaId" required>
+                  <option value="">Selecione a turma</option>
+                  <option v-for="turma in turmasDisponiveis" :key="turma.id" :value="turma.id">
+                    {{ turma.nome }} - {{ turma.ano }}
+                  </option>
+                </select>
+                <small class="text-muted">
+                  Se a turma ainda não está cadastrada, cadastre-a primeiro.
+                </small>
               </div>
 
               <div class="mb-3">
@@ -198,6 +200,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import api from '@/services/api'
+import turmasService from '@/services/turmasService'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
@@ -231,7 +234,7 @@ const formData = ref({
   ativo: true,
   // Campos específicos para ALUNO
   dataNascimento: '',
-  turma: '',
+  turmaId: '',
   responsavelId: '',
   // Campos específicos para PROFESSOR
   disciplinas: '',
@@ -239,6 +242,7 @@ const formData = ref({
 })
 
 const responsaveisDisponiveis = ref([])
+const turmasDisponiveis = ref([])
 
 // Computed para mostrar o nome da escola do diretor
 const escolaNomeDoUsuario = computed(() => {
@@ -271,12 +275,14 @@ onMounted(async () => {
   
   if (formData.value.role === 'ALUNO') {
     await loadResponsaveis()
+    await loadTurmas()
   }
 })
 
 watch(() => formData.value.role, async (newRole) => {
   if (newRole === 'ALUNO') {
     await loadResponsaveis()
+    await loadTurmas()
   }
 })
 
@@ -285,9 +291,23 @@ const loadResponsaveis = async () => {
     const params = formData.value.escolaId ? { escolaId: formData.value.escolaId } : {}
     const response = await api.get('/usuarios/responsaveis-disponiveis', { params })
     responsaveisDisponiveis.value = response.data
-    console.log('Responsáveis disponíveis carregados:', responsaveisDisponiveis.value)
   } catch (error) {
     console.error('Erro ao carregar responsáveis:', error)
+  }
+}
+
+const loadTurmas = async () => {
+  try {
+    const response = await turmasService.listarTurmas()
+    turmasDisponiveis.value = response.data
+    // Se for diretor, filtrar apenas turmas da sua escola
+    if (authStore.userRole === 'DIRETORIA' && authStore.user?.escolaId) {
+      turmasDisponiveis.value = turmasDisponiveis.value.filter(
+        turma => turma.escolaId === authStore.user.escolaId
+      )
+    }
+  } catch (error) {
+    console.error('Erro ao carregar turmas:', error)
   }
 }
 
@@ -303,7 +323,7 @@ const handleRoleChange = () => {
   formData.value = {
     ...formData.value,
     dataNascimento: '',
-    turma: '',
+    turmaId: '',
     responsavelId: '',
     disciplinas: '',
     turmas: ''
@@ -324,24 +344,49 @@ const handleSubmit = () => {
     delete dadosParaEnviar.senha
   }
   
-  // Converter disciplinas de string para array (para PROFESSOR)
-  if (dadosParaEnviar.role === 'PROFESSOR' && dadosParaEnviar.disciplinas) {
-    if (typeof dadosParaEnviar.disciplinas === 'string') {
+  // Limpar campos vazios para evitar erro 400
+  Object.keys(dadosParaEnviar).forEach(key => {
+    if (dadosParaEnviar[key] === '' || dadosParaEnviar[key] === null) {
+      delete dadosParaEnviar[key]
+    }
+  })
+  
+  // Para ALUNO: remover campos de professor
+  if (dadosParaEnviar.role === 'ALUNO') {
+    delete dadosParaEnviar.disciplinas
+    delete dadosParaEnviar.turmas
+  }
+  
+  // Para PROFESSOR: remover campos de aluno
+  if (dadosParaEnviar.role === 'PROFESSOR') {
+    delete dadosParaEnviar.dataNascimento
+    delete dadosParaEnviar.turmaId
+    delete dadosParaEnviar.responsavelId
+    
+    // Converter disciplinas de string para array
+    if (dadosParaEnviar.disciplinas && typeof dadosParaEnviar.disciplinas === 'string') {
       dadosParaEnviar.disciplinas = dadosParaEnviar.disciplinas
         .split(',')
         .map(d => d.trim())
         .filter(d => d.length > 0)
     }
-  }
-  
-  // Converter turmas de string para array (para PROFESSOR) se existir
-  if (dadosParaEnviar.role === 'PROFESSOR' && dadosParaEnviar.turmas) {
-    if (typeof dadosParaEnviar.turmas === 'string') {
+    
+    // Converter turmas de string para array se existir
+    if (dadosParaEnviar.turmas && typeof dadosParaEnviar.turmas === 'string') {
       dadosParaEnviar.turmas = dadosParaEnviar.turmas
         .split(',')
         .map(t => t.trim())
         .filter(t => t.length > 0)
     }
+  }
+  
+  // Para RESPONSAVEL, DIRETORIA, ADMINISTRADOR: remover campos específicos
+  if (['RESPONSAVEL', 'DIRETORIA', 'ADMINISTRADOR'].includes(dadosParaEnviar.role)) {
+    delete dadosParaEnviar.dataNascimento
+    delete dadosParaEnviar.turmaId
+    delete dadosParaEnviar.responsavelId
+    delete dadosParaEnviar.disciplinas
+    delete dadosParaEnviar.turmas
   }
   
   // Validar campos obrigatórios
@@ -369,6 +414,13 @@ const handleSubmit = () => {
     return
   }
   
+  // Validar turma para aluno
+  if (dadosParaEnviar.role === 'ALUNO' && !dadosParaEnviar.turmaId) {
+    alert('Turma é obrigatória para alunos')
+    return
+  }
+  
+  console.log('📤 Enviando dados:', dadosParaEnviar)
   emit('save', dadosParaEnviar)
 }
 </script>
