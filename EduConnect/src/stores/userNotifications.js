@@ -64,12 +64,14 @@ export const useUserNotificationsStore = defineStore('userNotifications', () => 
 
   const mapRecados = (recados) => recados.map((r) => {
     const id = `recado-${r.id}`
+    const date = asDate(r.dataEnvio || r.createdAt || new Date())
     return {
       id,
       type: 'RECADO',
       title: 'Novo recado',
       message: r.titulo,
-      date: asDate(r.dataEnvio),
+      date,
+      timestamp: date.getTime(),
       link: `/recados/${r.id}`,
       read: readState.value[id] || false
     }
@@ -77,12 +79,14 @@ export const useUserNotificationsStore = defineStore('userNotifications', () => 
 
   const mapAtividades = (atividades) => atividades.map((a) => {
     const id = `atividade-${a.id}`
+    const date = asDate(a.dataCriacao || a.dataEntrega || new Date())
     return {
       id,
       type: 'ATIVIDADE',
       title: 'Entrega de atividade',
       message: a.titulo,
-      date: asDate(a.dataEntrega || a.dataCriacao),
+      date,
+      timestamp: date.getTime(),
       link: `/atividades/${a.id}`,
       read: readState.value[id] || false
     }
@@ -90,12 +94,14 @@ export const useUserNotificationsStore = defineStore('userNotifications', () => 
 
   const mapEventos = (eventos) => eventos.map((e) => {
     const id = `evento-${e.id}`
+    const date = asDate(e.createdAt || e.dataInicio || new Date())
     return {
       id,
       type: 'EVENTO',
       title: e.tipo === 'PROVA' ? 'Nova prova no calendário' : 'Evento no calendário',
       message: e.titulo,
-      date: asDate(e.dataInicio),
+      date,
+      timestamp: date.getTime(),
       link: '/calendario',
       read: readState.value[id] || false
     }
@@ -103,12 +109,14 @@ export const useUserNotificationsStore = defineStore('userNotifications', () => 
 
   const mapDocumentos = (docs) => docs.map((d) => {
     const id = `documento-${d.id}`
+    const date = asDate(d.createdAt || d.data || d.dataEnvio || new Date())
     return {
       id,
       type: 'DOCUMENTO',
       title: 'Documento recebido',
       message: d.nome || d.titulo || 'Novo documento',
-      date: asDate(d.data || d.dataEnvio || d.createdAt),
+      date,
+      timestamp: date.getTime(),
       link: '/documentos',
       read: readState.value[id] || false
     }
@@ -149,7 +157,7 @@ export const useUserNotificationsStore = defineStore('userNotifications', () => 
     }
 
     notifications.value = aggregated
-      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+      .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
       .map((n) => ({ ...n, read: readState.value[n.id] || false }))
 
     loading.value = false

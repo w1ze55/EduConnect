@@ -5,28 +5,22 @@
     </h2>
     
     <div class="row g-3 mb-4">
-      <div class="col-md-3">
+      <div class="col-md-4">
         <div class="stat-card bg-primary text-white">
           <h6 class="opacity-75">Total de Usuários</h6>
-          <h2>245</h2>
+          <h2>{{ stats.totalUsuarios }}</h2>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <div class="stat-card bg-success text-white">
           <h6 class="opacity-75">Usuários Ativos</h6>
-          <h2>198</h2>
+          <h2>{{ stats.usuariosAtivos }}</h2>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <div class="stat-card bg-warning text-white">
           <h6 class="opacity-75">Recados Enviados</h6>
-          <h2>1,234</h2>
-        </div>
-      </div>
-      <div class="col-md-3">
-        <div class="stat-card bg-info text-white">
-          <h6 class="opacity-75">Taxa de Pagamento</h6>
-          <h2>94%</h2>
+          <h2>{{ stats.recadosEnviados }}</h2>
         </div>
       </div>
     </div>
@@ -38,40 +32,21 @@
             <h5 class="mb-0">Usuários por Perfil</h5>
           </div>
           <div class="card-body">
-            <div class="mb-3">
+            <div 
+              v-for="(item, index) in usuariosPorPerfil" 
+              :key="item.label" 
+              class="mb-3"
+            >
               <div class="d-flex justify-content-between mb-1">
-                <span>Alunos</span>
-                <strong>120</strong>
+                <span>{{ item.label }}</span>
+                <strong>{{ item.total }}</strong>
               </div>
               <div class="progress">
-                <div class="progress-bar bg-primary" style="width: 49%"></div>
-              </div>
-            </div>
-            <div class="mb-3">
-              <div class="d-flex justify-content-between mb-1">
-                <span>Responsáveis</span>
-                <strong>80</strong>
-              </div>
-              <div class="progress">
-                <div class="progress-bar bg-success" style="width: 33%"></div>
-              </div>
-            </div>
-            <div class="mb-3">
-              <div class="d-flex justify-content-between mb-1">
-                <span>Professores</span>
-                <strong>40</strong>
-              </div>
-              <div class="progress">
-                <div class="progress-bar bg-warning" style="width: 16%"></div>
-              </div>
-            </div>
-            <div>
-              <div class="d-flex justify-content-between mb-1">
-                <span>Administradores</span>
-                <strong>5</strong>
-              </div>
-              <div class="progress">
-                <div class="progress-bar bg-danger" style="width: 2%"></div>
+                <div 
+                  class="progress-bar" 
+                  :class="item.barClass"
+                  :style="`width: ${item.percent}%`"
+                ></div>
               </div>
             </div>
           </div>
@@ -83,36 +58,147 @@
           <div class="card-header bg-white">
             <h5 class="mb-0">Atividades Recentes</h5>
           </div>
-          <div class="card-body">
-            <div class="activity-item mb-3">
-              <i class="bi bi-person-plus text-success"></i>
-              <div>
-                <strong>Novo usuário cadastrado</strong>
-                <small class="text-muted d-block">Maria Silva - há 2 horas</small>
+            <div class="card-body">
+              <div v-if="atividadesRecentes.length === 0" class="text-muted text-center py-4">
+                Nenhuma atividade encontrada
               </div>
-            </div>
-            <div class="activity-item mb-3">
-              <i class="bi bi-envelope text-primary"></i>
-              <div>
-                <strong>Recado enviado</strong>
-                <small class="text-muted d-block">Reunião de pais - há 5 horas</small>
-              </div>
-            </div>
-            <div class="activity-item">
-              <i class="bi bi-credit-card text-warning"></i>
-              <div>
-                <strong>Pagamento recebido</strong>
-                <small class="text-muted d-block">João Santos - há 1 dia</small>
+              <div 
+                v-for="(atv, idx) in atividadesRecentes" 
+                :key="idx" 
+                class="activity-item mb-3"
+              >
+                <i :class="atv.icon" :style="`color: ${atv.color}`"></i>
+                <div>
+                  <strong>{{ atv.titulo }}</strong>
+                  <small class="text-muted d-block">{{ atv.descricao }}</small>
+                  <small class="text-muted">{{ atv.data }}</small>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup>
+import { ref, computed, onMounted } from 'vue'
+import usuariosService from '../../services/usuariosService'
+import recadosService from '../../services/recadosService'
+import atividadesService from '../../services/atividadesService'
+import dashboardService from '../../services/dashboardService'
+import { useNotificationStore } from '../../stores/notifications'
+
+const notificationStore = useNotificationStore()
+
+const stats = ref({
+  totalUsuarios: 0,
+  usuariosAtivos: 0,
+  recadosEnviados: 0
+})
+
+const usuariosPorPerfil = computed(() => {
+  const total = statsDetalhados.value.total || 1
+  return [
+    { label: 'Alunos', total: statsDetalhados.value.alunos, percent: (statsDetalhados.value.alunos / total) * 100, barClass: 'bg-primary' },
+    { label: 'Responsáveis', total: statsDetalhados.value.responsaveis, percent: (statsDetalhados.value.responsaveis / total) * 100, barClass: 'bg-success' },
+    { label: 'Professores', total: statsDetalhados.value.professores, percent: (statsDetalhados.value.professores / total) * 100, barClass: 'bg-warning' },
+    { label: 'Administradores', total: statsDetalhados.value.administradores, percent: (statsDetalhados.value.administradores / total) * 100, barClass: 'bg-danger' }
+  ]
+})
+
+const statsDetalhados = ref({
+  total: 0,
+  alunos: 0,
+  responsaveis: 0,
+  professores: 0,
+  administradores: 0
+})
+
+const atividadesRecentes = ref([])
+
+const carregarDados = async () => {
+  try {
+    const [usuarios, recados, atividades, dashboard] = await Promise.all([
+      usuariosService.getAllUsuarios(),
+      recadosService.getRecados(),
+      atividadesService.listar(),
+      dashboardService.getResumo()
+    ])
+
+    const totalUsuarios = usuarios.length
+    const usuariosAtivos = usuarios.filter(u => u.ativo !== false).length
+    const recadosEnviados = (recados?.data || recados || []).length
+
+    stats.value = {
+      totalUsuarios,
+      usuariosAtivos,
+      recadosEnviados
+    }
+
+    statsDetalhados.value = {
+      total: totalUsuarios || 1,
+      alunos: usuarios.filter(u => u.role === 'ALUNO').length,
+      responsaveis: usuarios.filter(u => u.role === 'RESPONSAVEL').length,
+      professores: usuarios.filter(u => u.role === 'PROFESSOR').length,
+      administradores: usuarios.filter(u => u.role === 'ADMINISTRADOR' || u.role === 'DIRETORIA').length
+    }
+
+    const eventos = dashboard?.proximosEventos || []
+    const recadosData = recados?.data || recados || []
+    const atividadesData = atividades || []
+
+    const linhaTempo = [
+      ...recadosData.map(r => ({
+        data: r.dataEnvio,
+        titulo: 'Recado enviado',
+        descricao: r.titulo,
+        icon: 'bi bi-envelope-fill',
+        color: '#0d6efd'
+      })),
+      ...atividadesData.map(a => ({
+        data: a.dataCriacao || a.dataEntrega,
+        titulo: 'Atividade publicada',
+        descricao: a.titulo,
+        icon: 'bi bi-clipboard-check',
+        color: '#198754'
+      })),
+      ...eventos.map(e => ({
+        data: e.dataInicio,
+        titulo: 'Evento no calendário',
+        descricao: e.titulo,
+        icon: 'bi bi-calendar-event',
+        color: '#fd7e14'
+      }))
+    ]
+
+    atividadesRecentes.value = linhaTempo
+      .filter(item => item.data)
+      .sort((a, b) => new Date(b.data) - new Date(a.data))
+      .slice(0, 8)
+      .map(item => ({
+        ...item,
+        data: formatarData(item.data)
+      }))
+  } catch (error) {
+    console.error('Erro ao carregar estatísticas:', error)
+    notificationStore.error('Não foi possível carregar estatísticas')
+  }
+}
+
+const formatarData = (dataISO) => {
+  if (!dataISO) return ''
+  const data = new Date(dataISO)
+  return data.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
+}
+
+onMounted(() => {
+  carregarDados()
+})
 </script>
 
 <style scoped>

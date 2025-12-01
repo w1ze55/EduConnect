@@ -160,7 +160,7 @@ const userInitials = computed(() => {
   return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
 })
 
-const notifications = computed(() => notifStore.filteredNotifications)
+const notifications = computed(() => [...notifStore.filteredNotifications].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)))
 const unreadCount = computed(() => notifStore.unreadCount)
 const loadingNotifications = computed(() => notifStore.loading)
 const filtroTipo = computed({
