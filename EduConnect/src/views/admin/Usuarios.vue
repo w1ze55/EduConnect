@@ -335,24 +335,26 @@ const closeUsuarioModal = () => {
 
 const saveUsuario = async (usuarioData) => {
   try {
-    console.log('Salvando usuário:', usuarioData)
-    console.log('Modo:', modalMode.value)
+    console.log('📤 Salvando usuário:', usuarioData)
+    console.log('🔧 Modo:', modalMode.value)
+    console.log('🎯 TurmaId sendo enviado:', usuarioData.turmaId)
     
     if (modalMode.value === 'create') {
       const resultado = await usuariosService.criar(usuarioData)
-      console.log('Usuário criado:', resultado)
+      console.log('✅ Usuário criado:', resultado)
       notifications.success('Usuário criado com sucesso!')
     } else {
-      console.log('Atualizando usuário ID:', usuarioData.id)
+      console.log('🔄 Atualizando usuário ID:', usuarioData.id)
       const resultado = await usuariosService.atualizar(usuarioData.id, usuarioData)
-      console.log('Usuário atualizado:', resultado)
+      console.log('✅ Usuário atualizado:', resultado)
+      console.log('🎯 TurmaId do resultado:', resultado.turmaId)
       notifications.success('Usuário atualizado com sucesso!')
     }
     closeUsuarioModal()
     await loadUsuarios()
   } catch (error) {
-    console.error('Erro completo ao salvar usuário:', error)
-    console.error('Resposta do servidor:', error.response?.data)
+    console.error('❌ Erro completo ao salvar usuário:', error)
+    console.error('📋 Resposta do servidor:', error.response?.data)
     notifications.error(error.response?.data?.message || error.message || 'Erro ao salvar usuário')
   }
 }

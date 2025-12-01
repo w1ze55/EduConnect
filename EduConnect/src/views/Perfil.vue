@@ -30,10 +30,16 @@
                   <label class="form-label">E-mail</label>
                   <input 
                     type="email" 
-                    class="form-control" 
+                    class="form-control"
+                    :class="{ 'is-invalid': perfil.email && !validarEmail(perfil.email) }"
                     v-model="perfil.email"
                     required
+                    placeholder="exemplo@email.com"
+                    @blur="validarEmailEmTempoReal"
                   />
+                  <div v-if="perfil.email && !validarEmail(perfil.email)" class="invalid-feedback d-block">
+                    <small class="text-danger">Digite um email válido (ex: exemplo@email.com)</small>
+                  </div>
                 </div>
               </div>
               <div class="row">
@@ -41,10 +47,16 @@
                   <label class="form-label">Telefone</label>
                   <input 
                     type="text" 
-                    class="form-control" 
+                    class="form-control"
+                    :class="{ 'is-invalid': perfil.telefone && !validarTelefone(perfil.telefone) }"
                     v-model="perfil.telefone"
                     placeholder="(00) 00000-0000"
+                    maxlength="15"
+                    @input="aplicarMascaraTelefone"
                   />
+                  <div v-if="perfil.telefone && !validarTelefone(perfil.telefone)" class="invalid-feedback d-block">
+                    <small class="text-danger">Digite um telefone válido (00) 00000-0000 ou (00) 0000-0000</small>
+                  </div>
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">CPF</label>
@@ -74,21 +86,41 @@
                   <label class="form-label">Nova Senha</label>
                   <input 
                     type="password" 
-                    class="form-control" 
+                    class="form-control"
+                    :class="{ 'is-invalid': perfil.novaSenha && !validarSenha(perfil.novaSenha).valida }"
                     v-model="perfil.novaSenha"
                     placeholder="Deixe em branco para não alterar"
-                    minlength="6"
+                    @input="validarSenhaEmTempoReal"
                   />
-                  <small class="text-muted">Mínimo 6 caracteres</small>
+                  <div v-if="perfil.novaSenha && !validarSenha(perfil.novaSenha).valida" class="invalid-feedback d-block">
+                    <small class="text-danger">A senha deve atender aos seguintes critérios:</small>
+                    <ul class="mb-0 mt-1 small">
+                      <li :class="{ 'text-success': validarSenha(perfil.novaSenha).temMinimo }">Mínimo 8 caracteres</li>
+                      <li :class="{ 'text-success': validarSenha(perfil.novaSenha).temMaiuscula }">1 letra maiúscula</li>
+                      <li :class="{ 'text-success': validarSenha(perfil.novaSenha).temMinuscula }">1 letra minúscula</li>
+                      <li :class="{ 'text-success': validarSenha(perfil.novaSenha).temNumero }">1 número</li>
+                      <li :class="{ 'text-success': validarSenha(perfil.novaSenha).temEspecial }">1 caractere especial (!@#$%^&*)</li>
+                    </ul>
+                  </div>
+                  <small v-else-if="perfil.novaSenha && validarSenha(perfil.novaSenha).valida" class="text-success">
+                    <i class="bi bi-check-circle-fill me-1"></i>Senha válida
+                  </small>
                 </div>
                 <div class="col-md-6 mb-3">
                   <label class="form-label">Confirmar Nova Senha</label>
                   <input 
                     type="password" 
-                    class="form-control" 
+                    class="form-control"
+                    :class="{ 'is-invalid': perfil.confirmarSenha && perfil.novaSenha !== perfil.confirmarSenha }"
                     v-model="perfil.confirmarSenha"
                     placeholder="Confirme a nova senha"
                   />
+                  <div v-if="perfil.confirmarSenha && perfil.novaSenha !== perfil.confirmarSenha" class="invalid-feedback d-block">
+                    <small class="text-danger">As senhas não coincidem</small>
+                  </div>
+                  <small v-else-if="perfil.confirmarSenha && perfil.novaSenha === perfil.confirmarSenha" class="text-success">
+                    <i class="bi bi-check-circle-fill me-1"></i>Senhas coincidem
+                  </small>
                 </div>
               </div>
               
@@ -186,11 +218,101 @@ const roleLabel = computed(() => {
   return roles[perfil.value.role] || perfil.value.role
 })
 
+const validarSenha = (senha) => {
+  if (!senha || senha.trim() === '') {
+    return {
+      valida: false,
+      temMinimo: false,
+      temMaiuscula: false,
+      temMinuscula: false,
+      temNumero: false,
+      temEspecial: false
+    }
+  }
+  
+  const temMinimo = senha.length >= 8
+  const temMaiuscula = /[A-Z]/.test(senha)
+  const temMinuscula = /[a-z]/.test(senha)
+  const temNumero = /[0-9]/.test(senha)
+  const temEspecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(senha)
+  
+  return {
+    valida: temMinimo && temMaiuscula && temMinuscula && temNumero && temEspecial,
+    temMinimo,
+    temMaiuscula,
+    temMinuscula,
+    temNumero,
+    temEspecial
+  }
+}
+
+const validarSenhaEmTempoReal = () => {
+  // Função chamada quando o usuário digita a senha
+}
+
+const aplicarMascaraTelefone = (event) => {
+  let valor = event.target.value.replace(/\D/g, '') // Remove tudo que não é dígito
+  
+  if (valor.length <= 11) {
+    // Aplica a máscara: (00) 00000-0000 ou (00) 0000-0000
+    if (valor.length <= 10) {
+      // Telefone fixo: (00) 0000-0000
+      valor = valor.replace(/(\d{2})(\d)/, '($1) $2')
+      valor = valor.replace(/(\d{4})(\d)/, '$1-$2')
+    } else {
+      // Celular: (00) 00000-0000
+      valor = valor.replace(/(\d{2})(\d)/, '($1) $2')
+      valor = valor.replace(/(\d{5})(\d)/, '$1-$2')
+    }
+    perfil.value.telefone = valor
+  }
+}
+
+const validarTelefone = (telefone) => {
+  if (!telefone) return false
+  
+  // Remove caracteres não numéricos
+  const telefoneLimpo = telefone.replace(/\D/g, '')
+  
+  // Telefone deve ter 10 ou 11 dígitos (fixo ou celular)
+  return telefoneLimpo.length === 10 || telefoneLimpo.length === 11
+}
+
+const validarEmail = (email) => {
+  if (!email) return false
+  
+  // Regex para validar email
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return regex.test(email)
+}
+
+const validarEmailEmTempoReal = () => {
+  // Função chamada quando o usuário sai do campo de email
+}
+
 const salvarPerfil = async () => {
+  // Validar formato do email
+  if (!validarEmail(perfil.value.email)) {
+    notificationStore.error('Por favor, digite um email válido')
+    return
+  }
+  
+  // Validar formato do telefone
+  if (perfil.value.telefone && !validarTelefone(perfil.value.telefone)) {
+    notificationStore.error('Por favor, digite um telefone válido')
+    return
+  }
+  
   // Validar senhas se estiver alterando
   if (perfil.value.novaSenha) {
-    if (perfil.value.novaSenha.length < 6) {
-      notificationStore.error('A senha deve ter no mínimo 6 caracteres')
+    const validacao = validarSenha(perfil.value.novaSenha)
+    if (!validacao.valida) {
+      notificationStore.error('A senha não atende aos critérios de segurança:\n' +
+            '- Mínimo 8 caracteres\n' +
+            '- 1 letra maiúscula\n' +
+            '- 1 letra minúscula\n' +
+            '- 1 número\n' +
+            '- 1 caractere especial (!@#$%^&*)')
       return
     }
     

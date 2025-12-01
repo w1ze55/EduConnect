@@ -49,7 +49,18 @@ public class AuthService {
             Usuario usuario = (Usuario) authentication.getPrincipal();
             String token = jwtUtil.generateToken(usuario);
             
+            // Mapear manualmente para garantir que escolaId seja incluído
             UsuarioDTO usuarioDTO = modelMapper.map(usuario, UsuarioDTO.class);
+            
+            if (usuario.getEscola() != null) {
+                usuarioDTO.setEscolaId(usuario.getEscola().getId());
+                usuarioDTO.setEscolaNome(usuario.getEscola().getNome());
+            }
+            
+            if (usuario.getResponsavel() != null) {
+                usuarioDTO.setResponsavelId(usuario.getResponsavel().getId());
+                usuarioDTO.setResponsavelNome(usuario.getResponsavel().getNome());
+            }
             
             System.out.println("✅ Login bem-sucedido para: " + usuario.getEmail());
             return new LoginResponse(token, usuarioDTO);
@@ -73,6 +84,11 @@ public class AuthService {
             throw new RuntimeException("CPF já cadastrado");
         }
         
+        // Validar força da senha
+        if (usuario.getPassword() != null && !usuario.getPassword().isEmpty()) {
+            UsuarioService.validarForcaSenha(usuario.getPassword());
+        }
+        
         System.out.println("🔐 Senha antes de criptografar: " + usuario.getPassword());
         String senhaOriginal = usuario.getPassword();
         usuario.setPassword(passwordEncoder.encode(usuario.getPassword()));
@@ -93,7 +109,20 @@ public class AuthService {
         Usuario usuarioAtualizado = usuarioRepository.findByEmail(usuario.getEmail())
             .orElseThrow(() -> new RuntimeException("Usuário não encontrado"));
         
-        return modelMapper.map(usuarioAtualizado, UsuarioDTO.class);
+        // Mapear manualmente para garantir que escolaId seja incluído
+        UsuarioDTO dto = modelMapper.map(usuarioAtualizado, UsuarioDTO.class);
+        
+        if (usuarioAtualizado.getEscola() != null) {
+            dto.setEscolaId(usuarioAtualizado.getEscola().getId());
+            dto.setEscolaNome(usuarioAtualizado.getEscola().getNome());
+        }
+        
+        if (usuarioAtualizado.getResponsavel() != null) {
+            dto.setResponsavelId(usuarioAtualizado.getResponsavel().getId());
+            dto.setResponsavelNome(usuarioAtualizado.getResponsavel().getNome());
+        }
+        
+        return dto;
     }
 }
 

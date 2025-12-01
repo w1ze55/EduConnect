@@ -40,9 +40,12 @@ public class TurmaService {
         else if (usuario.getRole() == Role.DIRETORIA) {
             turmas = turmaRepository.findByEscolaId(usuario.getEscola().getId());
         }
-        // Professor vê suas turmas
+        // Professor vê todas as turmas da sua escola (não apenas as associadas)
         else if (usuario.getRole() == Role.PROFESSOR) {
-            turmas = turmaRepository.findByProfessorId(usuario.getId());
+            if (usuario.getEscola() == null) {
+                throw new RuntimeException("Professor não está vinculado a nenhuma escola");
+            }
+            turmas = turmaRepository.findByEscolaId(usuario.getEscola().getId());
         }
         // Aluno vê suas turmas
         else if (usuario.getRole() == Role.ALUNO) {
@@ -125,9 +128,21 @@ public class TurmaService {
                 }
             }
             turma.setAlunos(alunos);
+            
+            // Atribuir escola da turma aos alunos
+            if (turma.getEscola() != null) {
+                atribuirEscolaAosAlunos(alunos, turma.getEscola());
+            }
         }
         
         Turma turmaSalva = turmaRepository.save(turma);
+        
+        // Sincronizar campo 'turmas' dos professores após salvar
+        if (dto.getProfessoresIds() != null && !dto.getProfessoresIds().isEmpty()) {
+            List<Usuario> professores = usuarioRepository.findAllById(dto.getProfessoresIds());
+            sincronizarTurmasProfessores(professores, turmaSalva);
+        }
+        
         return convertToDTO(turmaSalva);
     }
     
@@ -158,10 +173,20 @@ public class TurmaService {
         if (dto.getAtiva() != null) turma.setAtiva(dto.getAtiva());
         
         // Atualizar escola (apenas admin)
+        boolean escolaFoiAlterada = false;
         if (dto.getEscolaId() != null && usuario.getRole() == Role.ADMINISTRADOR) {
             Escola escola = escolaRepository.findById(dto.getEscolaId())
                 .orElseThrow(() -> new RuntimeException("Escola não encontrada"));
+            // Verificar se a escola foi alterada
+            if (turma.getEscola() == null || !turma.getEscola().getId().equals(escola.getId())) {
+                escolaFoiAlterada = true;
+            }
             turma.setEscola(escola);
+            
+            // Se a escola foi alterada, atualizar a escola de todos os alunos da turma
+            if (escolaFoiAlterada && turma.getAlunos() != null && !turma.getAlunos().isEmpty()) {
+                atribuirEscolaAosAlunos(turma.getAlunos(), escola);
+            }
         }
         
         // Atualizar professores
@@ -173,6 +198,9 @@ public class TurmaService {
                 }
             }
             turma.setProfessores(professores);
+            
+            // Sincronizar campo 'turmas' dos professores
+            sincronizarTurmasProfessores(professores, turma);
         }
         
         // Atualizar alunos
@@ -184,9 +212,21 @@ public class TurmaService {
                 }
             }
             turma.setAlunos(alunos);
+            
+            // Atribuir escola da turma aos alunos
+            if (turma.getEscola() != null) {
+                atribuirEscolaAosAlunos(alunos, turma.getEscola());
+            }
         }
         
         Turma turmaAtualizada = turmaRepository.save(turma);
+        
+        // Sincronizar campo 'turmas' dos professores após atualizar
+        if (dto.getProfessoresIds() != null) {
+            List<Usuario> professores = usuarioRepository.findAllById(dto.getProfessoresIds());
+            sincronizarTurmasProfessores(professores, turmaAtualizada);
+        }
+        
         return convertToDTO(turmaAtualizada);
     }
     
@@ -256,6 +296,13 @@ public class TurmaService {
         
         if (!turma.getAlunos().contains(aluno)) {
             turma.getAlunos().add(aluno);
+            
+            // Atribuir escola da turma ao aluno
+            if (turma.getEscola() != null) {
+                aluno.setEscola(turma.getEscola());
+                usuarioRepository.save(aluno);
+            }
+            
             turmaRepository.save(turma);
         }
         
@@ -382,6 +429,38 @@ public class TurmaService {
             if (!temFilhoNaTurma) {
                 throw new RuntimeException("Você não tem permissão para visualizar esta turma");
             }
+        }
+    }
+    
+    /**
+     * Atribui a escola da turma a todos os alunos fornecidos
+     */
+    private void atribuirEscolaAosAlunos(List<Usuario> alunos, Escola escola) {
+        for (Usuario aluno : alunos) {
+            aluno.setEscola(escola);
+            usuarioRepository.save(aluno);
+        }
+    }
+    
+    /**
+     * Sincroniza o campo 'turmas' (List<String>) dos professores com as turmas onde estão associados
+     */
+    private void sincronizarTurmasProfessores(List<Usuario> professores, Turma turmaAtual) {
+        for (Usuario professor : professores) {
+            // Buscar todas as turmas onde este professor está associado
+            List<Turma> turmasDoProfessor = turmaRepository.findByProfessorId(professor.getId());
+            
+            // Criar lista de nomes das turmas
+            List<String> nomesTurmas = turmasDoProfessor.stream()
+                .map(Turma::getNome)
+                .distinct()
+                .collect(java.util.stream.Collectors.toList());
+            
+            // Atualizar campo turmas do professor
+            professor.setTurmas(nomesTurmas);
+            usuarioRepository.save(professor);
+            
+            System.out.println("✅ Sincronizado turmas do professor " + professor.getNome() + ": " + nomesTurmas);
         }
     }
     
