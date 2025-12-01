@@ -56,40 +56,57 @@
                 </div>
               </div>
               
-              <!-- Multi-select de Alunos quando "Específico" for selecionado -->
+              <!-- Multi-select de Usuários quando "Específico" for selecionado -->
               <div v-if="form.destinatarios === 'especifico'" class="mb-3">
-                <label class="form-label">Selecionar Alunos *</label>
-                <div v-if="carregandoAlunos" class="text-center py-3">
+                <div class="row mb-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Tipo de Usuário *</label>
+                    <select class="form-select" v-model="form.tipoUsuarioEspecifico" @change="carregarUsuariosPorTipo" required>
+                      <option value="">Selecione o tipo...</option>
+                      <option value="ALUNO">Alunos</option>
+                      <option value="PROFESSOR">Professores</option>
+                      <option value="RESPONSAVEL">Responsáveis</option>
+                      <option value="DIRETORIA">Diretoria</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <label class="form-label">Selecionar Usuários *</label>
+                <div v-if="carregandoUsuarios" class="text-center py-3">
                   <div class="spinner-border spinner-border-sm text-primary" role="status">
                     <span class="visually-hidden">Carregando...</span>
                   </div>
-                  <p class="text-muted mt-2 mb-0">Carregando alunos...</p>
+                  <p class="text-muted mt-2 mb-0">Carregando usuários...</p>
                 </div>
-                <div v-else-if="alunosDisponiveis.length === 0" class="alert alert-info">
-                  <i class="bi bi-info-circle me-2"></i>Nenhum aluno encontrado.
+                <div v-else-if="!form.tipoUsuarioEspecifico" class="alert alert-info">
+                  <i class="bi bi-info-circle me-2"></i>Selecione um tipo de usuário para ver a lista.
                 </div>
-                <div v-else class="alunos-list border rounded p-3" style="max-height: 300px; overflow-y: auto;">
-                  <div v-for="aluno in alunosDisponiveis" :key="aluno.id" class="form-check mb-2">
+                <div v-else-if="usuariosDisponiveis.length === 0" class="alert alert-info">
+                  <i class="bi bi-info-circle me-2"></i>Nenhum usuário encontrado.
+                </div>
+                <div v-else class="usuarios-list border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                  <div v-for="usuario in usuariosDisponiveis" :key="usuario.id" class="form-check mb-2">
                     <input
                       class="form-check-input"
                       type="checkbox"
-                      :id="`aluno-${aluno.id}`"
-                      :value="aluno.id"
-                      v-model="form.alunosSelecionados"
+                      :id="`usuario-${usuario.id}`"
+                      :value="usuario.id"
+                      v-model="form.usuariosSelecionados"
                     />
-                    <label class="form-check-label d-flex justify-content-between w-100" :for="`aluno-${aluno.id}`">
+                    <label class="form-check-label d-flex justify-content-between w-100" :for="`usuario-${usuario.id}`">
                       <span>
-                        <strong>{{ aluno.nome }}</strong>
-                        <span v-if="aluno.turma" class="text-muted ms-2">({{ aluno.turma }})</span>
+                        <strong>{{ usuario.nome }}</strong>
+                        <span v-if="usuario.turma" class="text-muted ms-2">({{ usuario.turma }})</span>
+                        <span v-if="usuario.escolaNome" class="text-muted ms-2">- {{ usuario.escolaNome }}</span>
                       </span>
-                      <span v-if="aluno.responsavelNome" class="text-muted small">
-                        <i class="bi bi-person me-1"></i>{{ aluno.responsavelNome }}
+                      <span v-if="usuario.responsavelNome" class="text-muted small">
+                        <i class="bi bi-person me-1"></i>{{ usuario.responsavelNome }}
                       </span>
                     </label>
                   </div>
                 </div>
                 <small class="form-text text-muted">
-                  {{ form.alunosSelecionados.length }} aluno(s) selecionado(s). O recado será enviado para o aluno e seu responsável.
+                  {{ form.usuariosSelecionados.length }} usuário(s) selecionado(s).
                 </small>
               </div>
               
@@ -211,7 +228,8 @@ const form = ref({
   titulo: '',
   categoria: '',
   destinatarios: '',
-  alunosSelecionados: [],
+  tipoUsuarioEspecifico: '',
+  usuariosSelecionados: [],
   conteudo: '',
   anexos: [],
   importante: false,
@@ -220,28 +238,58 @@ const form = ref({
 
 const fileInput = ref(null)
 const enviando = ref(false)
-const carregandoAlunos = ref(false)
-const alunosDisponiveis = ref([])
+const carregandoUsuarios = ref(false)
+const usuariosDisponiveis = ref([])
 
-// Carregar alunos quando "específico" for selecionado
-watch(() => form.value.destinatarios, async (novoValor) => {
-  if (novoValor === 'especifico') {
-    await carregarAlunos()
-  } else {
-    form.value.alunosSelecionados = []
+// Limpar seleção quando mudar o tipo de destinatário
+watch(() => form.value.destinatarios, (novoValor) => {
+  if (novoValor !== 'especifico') {
+    form.value.tipoUsuarioEspecifico = ''
+    form.value.usuariosSelecionados = []
+    usuariosDisponiveis.value = []
   }
 })
 
-const carregarAlunos = async () => {
-  carregandoAlunos.value = true
+const carregarUsuariosPorTipo = async () => {
+  if (!form.value.tipoUsuarioEspecifico) {
+    usuariosDisponiveis.value = []
+    return
+  }
+  
+  carregandoUsuarios.value = true
+  form.value.usuariosSelecionados = [] // Limpar seleção ao mudar tipo (apenas na criação)
+  
   try {
-    const response = await usuariosService.getAlunos()
-    alunosDisponiveis.value = response.data
+    console.log('🔄 Carregando usuários do tipo:', form.value.tipoUsuarioEspecifico)
+    
+    let usuarios = []
+    
+    switch (form.value.tipoUsuarioEspecifico) {
+      case 'ALUNO':
+        usuarios = await usuariosService.getAlunos()
+        break
+      case 'PROFESSOR':
+        usuarios = await usuariosService.listarPorRole('PROFESSOR')
+        break
+      case 'RESPONSAVEL':
+        usuarios = await usuariosService.listarPorRole('RESPONSAVEL')
+        break
+      case 'DIRETORIA':
+        usuarios = await usuariosService.listarPorRole('DIRETORIA')
+        break
+      default:
+        usuarios = []
+    }
+    
+    console.log('✅ Usuários carregados:', usuarios)
+    usuariosDisponiveis.value = Array.isArray(usuarios) ? usuarios : []
   } catch (error) {
-    console.error('Erro ao carregar alunos:', error)
-    notificationStore.error('Erro ao carregar lista de alunos')
+    console.error('❌ Erro ao carregar usuários:', error)
+    console.error('❌ Resposta do erro:', error.response)
+    notificationStore.error(error.response?.data?.message || 'Erro ao carregar lista de usuários')
+    usuariosDisponiveis.value = []
   } finally {
-    carregandoAlunos.value = false
+    carregandoUsuarios.value = false
   }
 }
 
@@ -274,10 +322,16 @@ const formatFileSize = (bytes) => {
 }
 
 const enviarRecado = async () => {
-  // Validar se selecionou alunos quando "específico"
-  if (form.value.destinatarios === 'especifico' && form.value.alunosSelecionados.length === 0) {
-    notificationStore.error('Selecione pelo menos um aluno para enviar o recado.')
-    return
+  // Validar se selecionou usuários quando "específico"
+  if (form.value.destinatarios === 'especifico') {
+    if (!form.value.tipoUsuarioEspecifico) {
+      notificationStore.error('Selecione o tipo de usuário para destinatários específicos.')
+      return
+    }
+    if (form.value.usuariosSelecionados.length === 0) {
+      notificationStore.error('Selecione pelo menos um usuário para enviar o recado.')
+      return
+    }
   }
   
   enviando.value = true
@@ -309,9 +363,9 @@ const enviarRecado = async () => {
       anexos: []
     }
     
-    // Se for específico, enviar IDs dos alunos
+    // Se for específico, enviar IDs dos usuários selecionados
     if (form.value.destinatarios === 'especifico') {
-      recadoData.destinatariosEspecificos = form.value.alunosSelecionados
+      recadoData.destinatariosEspecificos = form.value.usuariosSelecionados
       recadoData.destinatarios = [] // Limpar destinatários gerais
     } else {
       recadoData.destinatarios = destinatariosMap[form.value.destinatarios] || ['TODOS']

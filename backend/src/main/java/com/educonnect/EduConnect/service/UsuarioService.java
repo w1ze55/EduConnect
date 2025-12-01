@@ -74,6 +74,15 @@ public class UsuarioService {
             throw new RuntimeException("Senha é obrigatória");
         }
         
+        // Validar força da senha
+        validarForcaSenha(dto.getSenha());
+        
+        // Validar CPF
+        validarCPF(dto.getCpf());
+        
+        // Validar telefone
+        validarTelefone(dto.getTelefone());
+        
         if (usuarioRepository.existsByEmail(dto.getEmail())) {
             throw new RuntimeException("Já existe um usuário cadastrado com este e-mail");
         }
@@ -134,20 +143,9 @@ public class UsuarioService {
         
         usuario = usuarioRepository.save(usuario);
         
-        // Se for ALUNO e tiver turmaId, adicionar o aluno à turma
-        if (dto.getRole() == Role.ALUNO && dto.getTurmaId() != null) {
-            Turma turma = turmaRepository.findById(dto.getTurmaId())
-                    .orElseThrow(() -> new RuntimeException("Turma não encontrada"));
-            
-            // Adicionar aluno à lista de alunos da turma
-            if (turma.getAlunos() == null) {
-                turma.setAlunos(new java.util.ArrayList<>());
-            }
-            
-            if (!turma.getAlunos().contains(usuario)) {
-                turma.getAlunos().add(usuario);
-                turmaRepository.save(turma);
-            }
+        // Sincronizar aluno com a turma
+        if (dto.getRole() == Role.ALUNO && dto.getTurma() != null && !dto.getTurma().isEmpty()) {
+            sincronizarAlunoComTurma(usuario, dto.getTurma());
         }
         
         return convertToDTO(usuario);
@@ -168,6 +166,12 @@ public class UsuarioService {
             throw new RuntimeException("Já existe um usuário cadastrado com este CPF");
         }
         
+        // Validar CPF
+        validarCPF(dto.getCpf());
+        
+        // Validar telefone
+        validarTelefone(dto.getTelefone());
+        
         usuario.setNome(dto.getNome());
         usuario.setEmail(dto.getEmail());
         usuario.setCpf(dto.getCpf());
@@ -177,6 +181,7 @@ public class UsuarioService {
         
         // Atualizar senha apenas se fornecida
         if (dto.getSenha() != null && !dto.getSenha().isEmpty()) {
+            validarForcaSenha(dto.getSenha());
             usuario.setPassword(passwordEncoder.encode(dto.getSenha()));
         }
         
@@ -199,22 +204,6 @@ public class UsuarioService {
             usuario.setResponsavel(responsavel);
             usuario.setTurma(dto.getTurma());
             usuario.setMatricula(dto.getMatricula());
-            
-            // Se turmaId mudou, atualizar vínculo
-            if (dto.getTurmaId() != null) {
-                Turma turma = turmaRepository.findById(dto.getTurmaId())
-                        .orElseThrow(() -> new RuntimeException("Turma não encontrada"));
-                
-                // Adicionar aluno à nova turma se ainda não estiver
-                if (turma.getAlunos() == null) {
-                    turma.setAlunos(new java.util.ArrayList<>());
-                }
-                
-                if (!turma.getAlunos().contains(usuario)) {
-                    turma.getAlunos().add(usuario);
-                    turmaRepository.save(turma);
-                }
-            }
         }
         
         // Atualizar campos específicos para PROFESSOR
@@ -224,6 +213,12 @@ public class UsuarioService {
         }
         
         usuario = usuarioRepository.save(usuario);
+        
+        // Sincronizar aluno com a turma
+        if (dto.getRole() == Role.ALUNO && dto.getTurma() != null && !dto.getTurma().isEmpty()) {
+            sincronizarAlunoComTurma(usuario, dto.getTurma());
+        }
+        
         return convertToDTO(usuario);
     }
     
@@ -249,7 +244,151 @@ public class UsuarioService {
             }
         }
         
+        // Se for professor, remover de todas as turmas antes de excluir
+        if (usuario.getRole() == Role.PROFESSOR) {
+            final Long professorId = usuario.getId();
+            List<Turma> turmas = turmaRepository.findByProfessorId(professorId);
+            for (Turma turma : turmas) {
+                turma.getProfessores().removeIf(p -> p.getId().equals(professorId));
+                turmaRepository.save(turma);
+            }
+        }
+        
         usuarioRepository.delete(usuario);
+    }
+    
+    /**
+     * Valida a força da senha conforme os critérios de segurança
+     */
+    public static void validarForcaSenha(String senha) {
+        if (senha == null || senha.trim().isEmpty()) {
+            throw new RuntimeException("Senha é obrigatória");
+        }
+        
+        if (senha.length() < 8) {
+            throw new RuntimeException("A senha deve ter no mínimo 8 caracteres");
+        }
+        
+        if (!senha.matches(".*[A-Z].*")) {
+            throw new RuntimeException("A senha deve conter pelo menos uma letra maiúscula");
+        }
+        
+        if (!senha.matches(".*[a-z].*")) {
+            throw new RuntimeException("A senha deve conter pelo menos uma letra minúscula");
+        }
+        
+        if (!senha.matches(".*[0-9].*")) {
+            throw new RuntimeException("A senha deve conter pelo menos um número");
+        }
+        
+        if (!senha.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*")) {
+            throw new RuntimeException("A senha deve conter pelo menos um caractere especial (!@#$%^&*)");
+        }
+    }
+    
+    /**
+     * Valida o formato do CPF
+     */
+    public static void validarCPF(String cpf) {
+        if (cpf == null || cpf.trim().isEmpty()) {
+            throw new RuntimeException("CPF é obrigatório");
+        }
+        
+        // Remove caracteres não numéricos
+        String cpfLimpo = cpf.replaceAll("\\D", "");
+        
+        // Verifica se tem 11 dígitos
+        if (cpfLimpo.length() != 11) {
+            throw new RuntimeException("CPF deve conter 11 dígitos");
+        }
+        
+        // Verifica se todos os dígitos são iguais (CPF inválido)
+        if (cpfLimpo.matches("(\\d)\\1{10}")) {
+            throw new RuntimeException("CPF inválido");
+        }
+        
+        // Validação do dígito verificador
+        int soma = 0;
+        int resto;
+        
+        for (int i = 1; i <= 9; i++) {
+            soma += Integer.parseInt(cpfLimpo.substring(i - 1, i)) * (11 - i);
+        }
+        
+        resto = (soma * 10) % 11;
+        if (resto == 10 || resto == 11) resto = 0;
+        if (resto != Integer.parseInt(cpfLimpo.substring(9, 10))) {
+            throw new RuntimeException("CPF inválido");
+        }
+        
+        soma = 0;
+        for (int i = 1; i <= 10; i++) {
+            soma += Integer.parseInt(cpfLimpo.substring(i - 1, i)) * (12 - i);
+        }
+        
+        resto = (soma * 10) % 11;
+        if (resto == 10 || resto == 11) resto = 0;
+        if (resto != Integer.parseInt(cpfLimpo.substring(10, 11))) {
+            throw new RuntimeException("CPF inválido");
+        }
+        
+        // Verifica formato com máscara
+        if (!cpf.matches("^\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}$")) {
+            throw new RuntimeException("CPF deve estar no formato 000.000.000-00");
+        }
+    }
+    
+    /**
+     * Valida o formato do telefone
+     */
+    public static void validarTelefone(String telefone) {
+        if (telefone == null || telefone.trim().isEmpty()) {
+            throw new RuntimeException("Telefone é obrigatório");
+        }
+        
+        // Remove caracteres não numéricos
+        String telefoneLimpo = telefone.replaceAll("\\D", "");
+        
+        // Telefone deve ter 10 ou 11 dígitos (fixo ou celular)
+        if (telefoneLimpo.length() != 10 && telefoneLimpo.length() != 11) {
+            throw new RuntimeException("Telefone deve conter 10 ou 11 dígitos");
+        }
+        
+        // Verifica formato com máscara
+        if (!telefone.matches("^\\(\\d{2}\\)\\s\\d{4,5}-\\d{4}$")) {
+            throw new RuntimeException("Telefone deve estar no formato (00) 00000-0000 ou (00) 0000-0000");
+        }
+    }
+    
+    /**
+     * Sincroniza o aluno com a turma, adicionando-o à lista de alunos da turma
+     */
+    private void sincronizarAlunoComTurma(Usuario aluno, String nomeTurma) {
+        // Buscar a turma pelo nome e pela escola do aluno
+        List<Turma> turmas = turmaRepository.findAll().stream()
+            .filter(t -> t.getNome().equals(nomeTurma))
+            .filter(t -> aluno.getEscola() != null && t.getEscola() != null && 
+                        t.getEscola().getId().equals(aluno.getEscola().getId()))
+            .collect(java.util.stream.Collectors.toList());
+        
+        if (turmas.isEmpty()) {
+            System.out.println("⚠️ Turma '" + nomeTurma + "' não encontrada para a escola do aluno");
+            return;
+        }
+        
+        Turma turma = turmas.get(0);
+        
+        // Verificar se o aluno já está na turma
+        boolean jaEstaVinculado = turma.getAlunos().stream()
+            .anyMatch(a -> a.getId().equals(aluno.getId()));
+        
+        if (!jaEstaVinculado) {
+            turma.getAlunos().add(aluno);
+            turmaRepository.save(turma);
+            System.out.println("✅ Aluno " + aluno.getNome() + " adicionado à turma " + turma.getNome());
+        } else {
+            System.out.println("ℹ️ Aluno " + aluno.getNome() + " já está vinculado à turma " + turma.getNome());
+        }
     }
     
     private UsuarioDTO convertToDTO(Usuario usuario) {

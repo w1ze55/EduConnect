@@ -33,20 +33,31 @@
               <input
                 type="tel"
                 class="form-control"
+                :class="{ 'is-invalid': formData.telefone && !validarTelefone(formData.telefone) }"
                 v-model="formData.telefone"
                 required
-                placeholder="Digite o telefone da escola"
+                placeholder="(00) 00000-0000"
+                maxlength="15"
+                @input="aplicarMascaraTelefone"
               />
+              <div v-if="formData.telefone && !validarTelefone(formData.telefone)" class="invalid-feedback d-block">
+                <small class="text-danger">Digite um telefone válido (00) 00000-0000 ou (00) 0000-0000</small>
+              </div>
             </div>
             <div class="mb-3">
               <label class="form-label">Email</label>
               <input
                 type="email"
                 class="form-control"
+                :class="{ 'is-invalid': formData.email && !validarEmail(formData.email) }"
                 v-model="formData.email"
                 required
-                placeholder="Digite o email da escola"
+                placeholder="exemplo@email.com"
+                @blur="validarEmailEmTempoReal"
               />
+              <div v-if="formData.email && !validarEmail(formData.email)" class="invalid-feedback d-block">
+                <small class="text-danger">Digite um email válido (ex: exemplo@email.com)</small>
+              </div>
             </div>
             <div class="mb-3">
               <div class="form-check">
@@ -101,7 +112,59 @@ onMounted(() => {
   }
 })
 
+const aplicarMascaraTelefone = (event) => {
+  let valor = event.target.value.replace(/\D/g, '') // Remove tudo que não é dígito
+  
+  if (valor.length <= 11) {
+    // Aplica a máscara: (00) 00000-0000 ou (00) 0000-0000
+    if (valor.length <= 10) {
+      // Telefone fixo: (00) 0000-0000
+      valor = valor.replace(/(\d{2})(\d)/, '($1) $2')
+      valor = valor.replace(/(\d{4})(\d)/, '$1-$2')
+    } else {
+      // Celular: (00) 00000-0000
+      valor = valor.replace(/(\d{2})(\d)/, '($1) $2')
+      valor = valor.replace(/(\d{5})(\d)/, '$1-$2')
+    }
+    formData.value.telefone = valor
+  }
+}
+
+const validarTelefone = (telefone) => {
+  if (!telefone) return false
+  
+  // Remove caracteres não numéricos
+  const telefoneLimpo = telefone.replace(/\D/g, '')
+  
+  // Telefone deve ter 10 ou 11 dígitos (fixo ou celular)
+  return telefoneLimpo.length === 10 || telefoneLimpo.length === 11
+}
+
+const validarEmail = (email) => {
+  if (!email) return false
+  
+  // Regex para validar email
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return regex.test(email)
+}
+
+const validarEmailEmTempoReal = () => {
+  // Função chamada quando o usuário sai do campo de email
+}
+
 const handleSubmit = () => {
+  // Validar formato do email
+  if (!validarEmail(formData.value.email)) {
+    alert('Por favor, digite um email válido')
+    return
+  }
+  
+  // Validar formato do telefone
+  if (!validarTelefone(formData.value.telefone)) {
+    alert('Por favor, digite um telefone válido')
+    return
+  }
+  
   emit('save', formData.value)
 }
 </script>

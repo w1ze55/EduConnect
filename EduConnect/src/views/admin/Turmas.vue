@@ -157,6 +157,7 @@
     <TurmaModal
       v-if="mostrarModal"
       :turma="turmaSelecionada"
+      :readonly="modoVisualizacao"
       @close="fecharModal"
       @saved="turmaAtualizada"
     />
@@ -185,6 +186,7 @@ export default {
     const loading = ref(false)
     const mostrarModal = ref(false)
     const turmaSelecionada = ref(null)
+    const modoVisualizacao = ref(false)
 
     const filtros = ref({
       busca: '',
@@ -238,22 +240,26 @@ export default {
 
     const abrirModalNovaTurma = () => {
       turmaSelecionada.value = null
+      modoVisualizacao.value = false
       mostrarModal.value = true
     }
 
     const editarTurma = (turma) => {
       turmaSelecionada.value = turma
+      modoVisualizacao.value = false
       mostrarModal.value = true
     }
 
     const verDetalhes = (turma) => {
       turmaSelecionada.value = turma
+      modoVisualizacao.value = true
       mostrarModal.value = true
     }
 
     const fecharModal = () => {
       mostrarModal.value = false
       turmaSelecionada.value = null
+      modoVisualizacao.value = false
     }
 
     const turmaAtualizada = () => {
@@ -288,6 +294,7 @@ export default {
       loading,
       mostrarModal,
       turmaSelecionada,
+      modoVisualizacao,
       filtros,
       podeGerenciar,
       turmasFiltradas,

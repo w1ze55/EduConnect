@@ -3,7 +3,7 @@
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">{{ turma ? 'Editar Turma' : 'Nova Turma' }}</h5>
+          <h5 class="modal-title">{{ readonly ? 'Detalhes da Turma' : (turma ? 'Editar Turma' : 'Nova Turma') }}</h5>
           <button type="button" class="btn-close" @click="fechar"></button>
         </div>
 
@@ -60,6 +60,7 @@
                     type="text"
                     class="form-control"
                     placeholder="Ex: 3º Ano A"
+                    :disabled="readonly"
                     required
                   />
                 </div>
@@ -71,13 +72,14 @@
                     type="text"
                     class="form-control"
                     placeholder="Ex: 2025"
+                    :disabled="readonly"
                     required
                   />
                 </div>
 
                 <div class="col-md-6">
                   <label class="form-label">Série *</label>
-                  <select v-model="form.serie" class="form-select" required>
+                  <select v-model="form.serie" class="form-select" :disabled="readonly" required>
                     <option value="">Selecione...</option>
                     <option value="1º Ano">1º Ano</option>
                     <option value="2º Ano">2º Ano</option>
@@ -96,7 +98,7 @@
 
                 <div class="col-md-6">
                   <label class="form-label">Turno *</label>
-                  <select v-model="form.turno" class="form-select" required>
+                  <select v-model="form.turno" class="form-select" :disabled="readonly" required>
                     <option value="">Selecione...</option>
                     <option value="MANHÃ">Manhã</option>
                     <option value="TARDE">Tarde</option>
@@ -107,7 +109,7 @@
 
                 <div class="col-12" v-if="isAdmin">
                   <label class="form-label">Escola</label>
-                  <select v-model="form.escolaId" class="form-select">
+                  <select v-model="form.escolaId" class="form-select" :disabled="readonly">
                     <option value="">Selecione...</option>
                     <option
                       v-for="escola in escolas"
@@ -126,6 +128,7 @@
                     class="form-control"
                     rows="3"
                     placeholder="Informações adicionais sobre a turma..."
+                    :disabled="readonly"
                   ></textarea>
                 </div>
 
@@ -136,6 +139,7 @@
                       v-model="form.ativa" 
                       class="form-check-input"
                       id="turmaAtiva"
+                      :disabled="readonly"
                     />
                     <label class="form-check-label" for="turmaAtiva">
                       Turma ativa
@@ -153,6 +157,7 @@
                   type="text"
                   placeholder="Buscar professor..."
                   class="form-control"
+                  :disabled="readonly"
                 />
               </div>
 
@@ -170,6 +175,7 @@
                       v-model="form.professoresIds"
                       class="form-check-input"
                       :id="`prof-${professor.id}`"
+                      :disabled="readonly"
                     />
                     <label class="form-check-label w-100 cursor-pointer" :for="`prof-${professor.id}`">
                       <div class="d-flex align-items-center">
@@ -205,6 +211,7 @@
                   type="text"
                   placeholder="Buscar aluno..."
                   class="form-control"
+                  :disabled="readonly"
                 />
               </div>
 
@@ -222,6 +229,7 @@
                       v-model="form.alunosIds"
                       class="form-check-input"
                       :id="`aluno-${aluno.id}`"
+                      :disabled="readonly"
                     />
                     <label class="form-check-label w-100 cursor-pointer" :for="`aluno-${aluno.id}`">
                       <div class="d-flex align-items-center">
@@ -257,9 +265,10 @@
 
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" @click="fechar">
-            Cancelar
+            {{ readonly ? 'Fechar' : 'Cancelar' }}
           </button>
           <button
+            v-if="!readonly"
             type="button"
             class="btn btn-primary"
             @click="salvar"
@@ -293,6 +302,10 @@ export default {
     turma: {
       type: Object,
       default: null
+    },
+    readonly: {
+      type: Boolean,
+      default: false
     }
   },
   emits: ['close', 'saved'],
@@ -368,8 +381,7 @@ export default {
 
         // Carregar escolas se for admin
         if (isAdmin.value) {
-          const escolasResponse = await escolasService.listarEscolas()
-          escolas.value = escolasResponse.data
+          escolas.value = await escolasService.listarTodas()
         }
 
         // Se for edição, carregar dados da turma
@@ -449,6 +461,7 @@ export default {
       isAdmin,
       professoresFiltrados,
       alunosFiltrados,
+      readonly: computed(() => props.readonly),
       salvar,
       fechar
     }

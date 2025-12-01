@@ -18,7 +18,8 @@ export default {
   
   async getAlunos() {
     const response = await api.get('/usuarios/alunos')
-    return response.data
+    // O backend retorna uma lista diretamente, não precisa de .data
+    return Array.isArray(response.data) ? response.data : []
   },
 
   async criar(usuarioData) {
@@ -52,8 +53,23 @@ export default {
   },
 
   async listarPorRole(role) {
-    const response = await api.get(`/usuarios?role=${role}`)
-    return response.data
+    // Usar endpoints específicos quando disponíveis
+    switch (role) {
+      case 'ALUNO':
+        return await this.getAlunos()
+      case 'PROFESSOR':
+        const responseProf = await api.get('/usuarios/professores')
+        return Array.isArray(responseProf.data) ? responseProf.data : []
+      case 'RESPONSAVEL':
+        const responseResp = await api.get('/usuarios/responsaveis-disponiveis')
+        return Array.isArray(responseResp.data) ? responseResp.data : []
+      case 'DIRETORIA':
+        const responseDir = await api.get('/usuarios/diretores-disponiveis')
+        return Array.isArray(responseDir.data) ? responseDir.data : []
+      default:
+        const response = await api.get(`/usuarios`)
+        return Array.isArray(response.data) ? response.data.filter(u => u.role === role) : []
+    }
   },
 
   async listarPorEscola(escolaId) {
