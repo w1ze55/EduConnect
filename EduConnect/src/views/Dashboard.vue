@@ -1,19 +1,24 @@
 <template>
   <div class="dashboard">
     <div class="container-fluid py-4">
-      <div class="row mb-4">
+      <div class="row align-items-start mb-4">
         <div class="col">
           <h2 class="fw-bold">
             <i class="bi bi-house-door-fill me-2"></i>
             Bem-vindo, {{ userName }}!
           </h2>
-          <p class="text-muted">Confira as últimas atualizações e notificações</p>
+          <p class="text-muted mb-0">Confira as últimas atualizações e notificações</p>
+        </div>
+        <div class="col-auto" v-if="exibeFiltros">
+          <button class="btn btn-outline-primary d-flex align-items-center" @click="abrirFiltros">
+            <i class="bi bi-sliders me-2"></i> Filtros
+          </button>
         </div>
       </div>
       
       <!-- Cards de Estatísticas -->
       <div class="row g-4 mb-4">
-        <div class="col-md-3">
+        <div class="col-md-4">
           <div class="stat-card bg-primary text-white">
             <div class="d-flex justify-content-between align-items-center">
               <div>
@@ -25,7 +30,7 @@
           </div>
         </div>
         
-        <div class="col-md-3">
+        <div class="col-md-4">
           <div class="stat-card bg-success text-white">
             <div class="d-flex justify-content-between align-items-center">
               <div>
@@ -37,7 +42,7 @@
           </div>
         </div>
         
-        <div class="col-md-3">
+        <div class="col-md-4">
           <div class="stat-card bg-warning text-white">
             <div class="d-flex justify-content-between align-items-center">
               <div>
@@ -48,20 +53,91 @@
             </div>
           </div>
         </div>
-        
-        <div class="col-md-3">
-          <div class="stat-card bg-info text-white">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <h6 class="text-uppercase mb-1 opacity-75">Documentos</h6>
-                <h2 class="mb-0">{{ stats.documentos }}</h2>
+      </div>
+
+      <div v-if="carregando" class="text-center py-5 text-muted">
+        <div class="spinner-border text-primary mb-3" role="status"></div>
+        <div>Carregando dados do dashboard...</div>
+      </div>
+
+      <div v-else>
+      <div 
+        class="filtros-sidebar" 
+        :class="{ 'filtros-sidebar-open': sidebarFiltrosAberto }"
+        v-if="exibeFiltros"
+      >
+        <div class="filtros-header">
+          <h6 class="mb-0">Filtros</h6>
+          <button class="btn btn-sm btn-outline-secondary" @click="fecharFiltros">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="filtros-body">
+          <div class="mb-3">
+            <label class="form-label">Data</label>
+            <select class="form-select" v-model="filtros.datePreset" @change="selecionarDataPreset($event.target.value)">
+              <option value="">Todas</option>
+              <option v-for="op in opcoesData" :key="op.value" :value="op.value">{{ op.label }}</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Intervalo personalizado</label>
+            <div class="row g-2">
+              <div class="col-6">
+                <input type="date" class="form-control" placeholder="dd/mm/aaaa" v-model="filtros.startDate" @change="onCustomDateChange">
               </div>
-              <i class="bi bi-file-earmark-text-fill fs-1 opacity-50"></i>
+              <div class="col-6">
+                <input type="date" class="form-control" placeholder="dd/mm/aaaa" v-model="filtros.endDate" @change="onCustomDateChange">
+              </div>
             </div>
+          </div>
+
+          <div class="mb-3" v-if="podeFiltrarEscola">
+            <label class="form-label">Escola</label>
+            <select class="form-select" v-model="filtros.escolaId" @change="onEscolaChange">
+              <option value="">Todas</option>
+              <option v-for="escola in opcoesFiltros.escolas" :key="escola.id" :value="escola.id">
+                {{ escola.nome }}
+              </option>
+            </select>
+          </div>
+
+          <div class="mb-3" v-if="podeFiltrarTurma">
+            <label class="form-label">Turma</label>
+            <select class="form-select" v-model="filtros.turmaId">
+              <option value="">Todas</option>
+              <option 
+                v-for="turma in turmasFiltradas" 
+                :key="turma.id" 
+                :value="turma.id">
+                {{ turma.nome }} - {{ turma.anoLetivo }}
+              </option>
+            </select>
+          </div>
+
+          <div class="mb-3" v-if="podeFiltrarUsuario">
+            <label class="form-label">Usuário</label>
+            <select class="form-select" v-model="filtros.usuarioId">
+              <option value="">Todos</option>
+              <option 
+                v-for="usuario in usuariosFiltrados" 
+                :key="usuario.id" 
+                :value="usuario.id">
+                {{ usuario.nome }} ({{ usuario.role }})
+              </option>
+            </select>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary w-100" @click="aplicarFiltros">Aplicar</button>
+            <button class="btn btn-outline-secondary w-100" @click="limparFiltros">Limpar</button>
           </div>
         </div>
       </div>
-      
+
+      <div class="filtros-overlay" v-if="sidebarFiltrosAberto" @click="fecharFiltros"></div>
+
       <div class="row g-4">
         <!-- Recados Recentes -->
         <div class="col-lg-6">
@@ -184,6 +260,7 @@
           </div>
         </div>
       </div>
+      </div>
     </div>
   </div>
 </template>
@@ -192,53 +269,231 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { useNotificationStore } from '../stores/notifications'
+import dashboardService from '../services/dashboardService'
+import escolasService from '../services/escolasService'
+import turmasService from '../services/turmasService'
+import usuariosService from '../services/usuariosService'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
 
 const userName = computed(() => authStore.userName)
 const userRole = computed(() => authStore.userRole)
 
-// Dados dinâmicos baseados no perfil
 const stats = ref({
   recados: 0,
   atividades: 0,
-  eventos: 0,
-  documentos: 0
+  eventos: 0
+})
+
+const filtros = ref({
+  escolaId: '',
+  turmaId: '',
+  usuarioId: '',
+  datePreset: 'essa_semana',
+  startDate: '',
+  endDate: ''
+})
+
+const opcoesFiltros = ref({
+  escolas: [],
+  turmas: [],
+  usuarios: []
 })
 
 const recadosRecentes = ref([])
 const atividadesPendentes = ref([])
-
 const proximosEventos = ref([])
+const carregando = ref(false)
+const sidebarFiltrosAberto = ref(false)
 
-// TODO: Carregar eventos do backend
+const podeFiltrarEscola = computed(() => userRole.value === 'ADMINISTRADOR')
+const podeFiltrarTurma = computed(() => ['ADMINISTRADOR', 'DIRETORIA', 'PROFESSOR'].includes(userRole.value))
+const podeFiltrarUsuario = computed(() => ['ADMINISTRADOR', 'DIRETORIA', 'PROFESSOR'].includes(userRole.value))
+const exibeFiltros = computed(() => podeFiltrarEscola.value || podeFiltrarTurma.value || podeFiltrarUsuario.value)
+
+const opcoesData = [
+  { label: 'Hoje', value: 'hoje' },
+  { label: 'Ontem', value: 'ontem' },
+  { label: 'Essa semana', value: 'essa_semana' },
+  { label: 'Esse mês', value: 'esse_mes' },
+  { label: 'Último mês', value: 'ultimo_mes' }
+]
+
+const turmasFiltradas = computed(() => {
+  const escolaSelecionada = filtros.value.escolaId ? Number(filtros.value.escolaId) : null
+  if (!escolaSelecionada) return opcoesFiltros.value.turmas
+  return opcoesFiltros.value.turmas.filter(turma => turma.escolaId === escolaSelecionada)
+})
+
+const usuariosFiltrados = computed(() => {
+  const escolaSelecionada = filtros.value.escolaId ? Number(filtros.value.escolaId) : null
+  if (!escolaSelecionada) return opcoesFiltros.value.usuarios
+  return opcoesFiltros.value.usuarios.filter(usuario => !usuario.escolaId || usuario.escolaId === escolaSelecionada)
+})
 
 const getPrazoClass = (prazo) => {
-  if (prazo.includes('Hoje')) return 'bg-danger'
-  if (prazo.includes('Amanhã')) return 'bg-warning'
+  if (!prazo) return 'bg-secondary'
+  if (prazo.toLowerCase().includes('hoje')) return 'bg-danger'
+  if (prazo.toLowerCase().includes('amanhã')) return 'bg-warning'
   return 'bg-info'
 }
 
-onMounted(async () => {
-  // Carregar dados do dashboard do backend
-  try {
-    // TODO: Implementar chamadas para API real
-    console.log('📊 [DASHBOARD] Carregando dados do usuário:', authStore.user?.role)
-    
-    // Por enquanto, deixar dados vazios até integração com backend
-    stats.value = {
-      recados: 0,
-      atividades: 0,
-      eventos: 0,
-      documentos: 0
+const formatarDataCurta = (dataISO) => {
+  if (!dataISO) return ''
+  const data = new Date(dataISO)
+  return data.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
+}
+
+const formatarPrazo = (dataISO) => {
+  if (!dataISO) return 'Sem data'
+  const agora = new Date()
+  const data = new Date(dataISO)
+  const diffDias = Math.floor((data - agora) / (1000 * 60 * 60 * 24))
+
+  if (diffDias < 0) return 'Vencida'
+  if (diffDias === 0) return 'Hoje'
+  if (diffDias === 1) return 'Amanhã'
+  return data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+}
+
+const formatarEvento = (dataISO) => {
+  if (!dataISO) {
+    return {
+      dia: '--',
+      mes: '--',
+      horario: '--:--'
     }
-    
-    recadosRecentes.value = []
-    atividadesPendentes.value = []
-  } catch (error) {
-    console.error('Erro ao carregar dados do dashboard:', error)
   }
+  const data = new Date(dataISO)
+  const meses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
+  return {
+    dia: String(data.getDate()).padStart(2, '0'),
+    mes: meses[data.getMonth()],
+    horario: data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  }
+}
+
+const mapearRespostaDashboard = (data) => {
+  stats.value = data?.stats || { recados: 0, atividades: 0, eventos: 0 }
+
+  recadosRecentes.value = (data?.recadosRecentes || []).map(recado => ({
+    id: recado.id,
+    titulo: recado.titulo,
+    remetente: recado.remetente || '—',
+    data: formatarDataCurta(recado.dataEnvio),
+    preview: recado.conteudo ? `${recado.conteudo.substring(0, 100)}${recado.conteudo.length > 100 ? '...' : ''}` : ''
+  }))
+
+  atividadesPendentes.value = (data?.atividadesPendentes || []).map(atividade => ({
+    id: atividade.id,
+    titulo: atividade.titulo,
+    disciplina: atividade.disciplina,
+    prazo: formatarPrazo(atividade.dataEntrega)
+  }))
+
+  proximosEventos.value = (data?.proximosEventos || []).map(evento => ({
+    id: evento.id,
+    titulo: evento.titulo,
+    ...formatarEvento(evento.dataInicio)
+  }))
+}
+
+const carregarOpcoesFiltros = async () => {
+  try {
+    if (podeFiltrarEscola.value) {
+      opcoesFiltros.value.escolas = await escolasService.listarTodas()
+    }
+
+    if (podeFiltrarTurma.value) {
+      const response = await turmasService.listarTurmas()
+      opcoesFiltros.value.turmas = response.data || []
+    }
+
+    if (podeFiltrarUsuario.value) {
+      if (userRole.value === 'ADMINISTRADOR' || userRole.value === 'DIRETORIA') {
+        opcoesFiltros.value.usuarios = await usuariosService.listar()
+      } else if (userRole.value === 'PROFESSOR') {
+        const [alunos, responsaveis, professores] = await Promise.all([
+          usuariosService.listarPorRole('ALUNO'),
+          usuariosService.listarPorRole('RESPONSAVEL'),
+          usuariosService.listarPorRole('PROFESSOR')
+        ])
+        opcoesFiltros.value.usuarios = [...alunos, ...responsaveis, ...professores]
+      }
+    }
+  } catch (error) {
+    console.error('Erro ao carregar filtros do dashboard:', error)
+    notificationStore.error('Não foi possível carregar os filtros do dashboard')
+  }
+}
+
+const aplicarFiltros = async () => {
+  carregando.value = true
+  try {
+    const params = {}
+    if (filtros.value.escolaId) params.escolaId = filtros.value.escolaId
+    if (filtros.value.turmaId) params.turmaId = filtros.value.turmaId
+    if (filtros.value.usuarioId) params.usuarioId = filtros.value.usuarioId
+    if (filtros.value.datePreset) params.datePreset = filtros.value.datePreset
+    if (filtros.value.startDate) params.startDate = filtros.value.startDate
+    if (filtros.value.endDate) params.endDate = filtros.value.endDate
+
+    const data = await dashboardService.getResumo(params)
+    mapearRespostaDashboard(data)
+    sidebarFiltrosAberto.value = false
+  } catch (error) {
+    console.error('Erro ao carregar dashboard:', error)
+    notificationStore.error('Não foi possível carregar os dados do dashboard')
+  } finally {
+    carregando.value = false
+  }
+}
+
+const onEscolaChange = () => {
+  filtros.value.turmaId = ''
+  filtros.value.usuarioId = ''
+}
+
+const selecionarDataPreset = (preset) => {
+  filtros.value.datePreset = preset
+  filtros.value.startDate = ''
+  filtros.value.endDate = ''
+}
+
+const onCustomDateChange = () => {
+  filtros.value.datePreset = ''
+}
+
+const limparFiltros = () => {
+  filtros.value = {
+    escolaId: '',
+    turmaId: '',
+    usuarioId: '',
+    datePreset: 'essa_semana',
+    startDate: '',
+    endDate: ''
+  }
+  aplicarFiltros()
+}
+
+const abrirFiltros = () => {
+  sidebarFiltrosAberto.value = true
+}
+
+const fecharFiltros = () => {
+  sidebarFiltrosAberto.value = false
+}
+
+onMounted(async () => {
+  await carregarOpcoesFiltros()
+  await aplicarFiltros()
 })
 </script>
 
@@ -303,6 +558,57 @@ onMounted(async () => {
 
 .evento-info {
   flex: 1;
+}
+
+.filtros-sidebar {
+  position: fixed;
+  top: 0;
+  right: -360px;
+  height: 100vh;
+  width: 360px;
+  background: #fff;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
+  z-index: 1050;
+  transition: right 0.3s ease;
+  overflow-y: auto;
+}
+
+.filtros-sidebar-open {
+  right: 0;
+}
+
+.filtros-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.25);
+  z-index: 1040;
+}
+
+.filtros-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  padding-bottom: 0.5rem;
+  z-index: 1;
+}
+
+.filtros-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.btn-group .btn.active {
+  background-color: #0d6efd;
+  color: #fff;
 }
 </style>
 
