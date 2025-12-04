@@ -67,12 +67,6 @@ const routes = [
     meta: { requiresAuth: true }
   },
   {
-    path: '/financeiro',
-    name: 'Financeiro',
-    component: () => import('../views/financeiro/Financeiro.vue'),
-    meta: { requiresAuth: true, roles: ['RESPONSAVEL', 'DIRETORIA', 'ADMINISTRADOR'] }
-  },
-  {
     path: '/admin/usuarios',
     name: 'AdminUsuarios',
     component: () => import('../views/admin/Usuarios.vue'),
