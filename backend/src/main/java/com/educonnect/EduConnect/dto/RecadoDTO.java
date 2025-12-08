@@ -16,6 +16,7 @@ public class RecadoDTO {
     private Boolean exigirConfirmacao;
     private List<String> destinatarios;
     private List<Long> destinatariosEspecificos;
+    private List<String> turmasDestinatarias;
     private String remetente;
     private Long remetenteId;
     private LocalDateTime dataEnvio;

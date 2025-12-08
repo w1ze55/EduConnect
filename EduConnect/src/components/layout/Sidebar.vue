@@ -59,12 +59,6 @@ const menuItems = [
     roles: ['ALUNO', 'RESPONSAVEL', 'PROFESSOR', 'DIRETORIA', 'ADMINISTRADOR']
   },
   { 
-    path: '/financeiro', 
-    label: 'Financeiro', 
-    icon: 'bi bi-wallet2',
-    roles: ['RESPONSAVEL', 'DIRETORIA', 'ADMINISTRADOR']
-  },
-  { 
     path: '/admin/usuarios', 
     label: 'Usuários', 
     icon: 'bi bi-people-fill',

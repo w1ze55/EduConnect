@@ -1,8 +1,8 @@
 import api from './api'
 
 export default {
-  async listar() {
-    const response = await api.get('/atividades')
+  async listar(params = {}) {
+    const response = await api.get('/atividades', { params })
     return response.data
   },
   
@@ -33,6 +33,13 @@ export default {
   
   avaliarResposta(id, data) {
     return api.put(`/atividades/${id}/avaliar`, data)
+  },
+
+  listarRespostas(atividadeId) {
+    return api.get(`/atividades/${atividadeId}/respostas`)
+  },
+
+  minhaResposta(atividadeId) {
+    return api.get(`/atividades/${atividadeId}/minha-resposta`)
   }
 }
-

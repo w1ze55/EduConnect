@@ -1,38 +1,46 @@
 import axios from 'axios'
 import { useNotificationStore } from '../stores/notifications'
 
-// Configuração base do Axios
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
   timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
+  headers: { 'Content-Type': 'application/json' }
 })
 
-// Interceptor de request
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token')
+    const token = sessionStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
-  (error) => {
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 
-// Interceptor de response
 api.interceptors.response.use(
-  (response) => {
-    return response
-  },
+  (response) => response,
   (error) => {
     const notificationStore = useNotificationStore()
-    
+    const token = sessionStorage.getItem('token')
+    const url = error.config?.url || ''
+
     if (error.response) {
+      // Silenciar toasts para chamadas opcionais de documentos
+      if (url.includes('/documentos')) {
+        return Promise.reject(error)
+      }
+
+      // Se não há token (usuário deslogado), ignore toasts de auth
+      if (!token && (error.response.status === 401 || error.response.status === 403)) {
+        return Promise.reject(error)
+      }
+
+       // Evitar toast para dashboard ao sair/logar
+      if (url.includes('/dashboard') && (error.response.status === 401 || error.response.status === 403)) {
+        return Promise.reject(error)
+      }
+
       switch (error.response.status) {
         case 401:
           notificationStore.error('Sessão expirada. Faça login novamente.')
@@ -55,10 +63,9 @@ api.interceptors.response.use(
     } else if (error.request) {
       notificationStore.error('Erro de conexão. Verifique sua internet.')
     }
-    
+
     return Promise.reject(error)
   }
 )
 
 export default api
-

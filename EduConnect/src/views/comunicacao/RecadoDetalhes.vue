@@ -51,7 +51,6 @@
           </div>
           
           <div class="card-body">
-            <!-- Informações do remetente -->
             <div class="remetente-info mb-4">
               <div class="d-flex align-items-center">
                 <div class="avatar me-3">
@@ -70,12 +69,10 @@
             
             <hr>
             
-            <!-- Conteúdo do recado -->
             <div class="recado-conteudo my-4">
               <p v-html="recado.conteudo"></p>
             </div>
             
-            <!-- Anexos -->
             <div v-if="recado.anexos && recado.anexos.length > 0" class="anexos-section mt-4">
               <h6 class="mb-3">
                 <i class="bi bi-paperclip me-2"></i>Anexos ({{ recado.anexos.length }})
@@ -95,16 +92,15 @@
                         <h6 class="mb-0">{{ anexo.nome }}</h6>
                         <small class="text-muted">{{ anexo.tamanho }}</small>
                       </div>
-                      <button class="btn btn-sm btn-outline-primary">
+                      <a class="btn btn-sm btn-outline-primary" :href="anexo.url" target="_blank">
                         <i class="bi bi-download"></i>
-                      </button>
+                      </a>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
             
-            <!-- Imagens -->
             <div v-if="recado.imagens && recado.imagens.length > 0" class="imagens-section mt-4">
               <h6 class="mb-3">
                 <i class="bi bi-image me-2"></i>Imagens
@@ -125,8 +121,7 @@
               </div>
             </div>
             
-            <!-- Confirmação de leitura -->
-            <div v-if="!recado.lido" class="alert alert-info mt-4">
+            <div v-if="podeConfirmarLeitura" class="alert alert-info mt-4">
               <div class="d-flex justify-content-between align-items-center">
                 <div>
                   <i class="bi bi-info-circle me-2"></i>
@@ -149,7 +144,7 @@
               </div>
             </div>
             
-            <div v-else class="alert alert-success mt-4">
+            <div v-else-if="recado.lido" class="alert alert-success mt-4">
               <i class="bi bi-check-circle me-2"></i>
               Leitura confirmada em {{ recado.dataLeitura }}
             </div>
@@ -177,19 +172,21 @@ const loading = ref(false)
 const recado = ref(null)
 const confirmandoLeitura = ref(false)
 
-// Verificar se o usuário pode editar/deletar o recado
+const role = computed(() => authStore.user?.role)
+
 const podeEditar = computed(() => {
   if (!recado.value || !authStore.user) return false
-  
-  const role = authStore.user.role
   const isAutor = recado.value.remetenteId === authStore.user.id
-  const isAdmin = role === 'ADMINISTRADOR' || role === 'DIRETORIA'
-  
+  const isAdmin = role.value === 'ADMINISTRADOR' || role.value === 'DIRETORIA'
   return isAutor || isAdmin
 })
 
-const podeDeletar = computed(() => {
-  return podeEditar.value
+const podeDeletar = computed(() => podeEditar.value)
+
+const podeConfirmarLeitura = computed(() => {
+  if (!recado.value || recado.value.lido) return false
+  if (!recado.value.exigirConfirmacao) return false
+  return role.value === 'ALUNO' || role.value === 'RESPONSAVEL'
 })
 
 onMounted(async () => {
@@ -206,6 +203,7 @@ onMounted(async () => {
       horaEnvio: formatarHora(recadoData.dataEnvio),
       categoria: recadoData.categoria.toLowerCase(),
       importante: recadoData.importante,
+      exigirConfirmacao: recadoData.exigirConfirmacao,
       lido: recadoData.lido,
       dataLeitura: recadoData.dataLeitura ? formatarDataHora(recadoData.dataLeitura) : null,
       conteudo: formatarConteudo(recadoData.conteudo),
@@ -216,7 +214,8 @@ onMounted(async () => {
         tamanho: 'N/A',
         url: url
       })) : [],
-      imagens: []
+      imagens: [],
+      remetenteId: recadoData.remetenteId
     }
   } catch (error) {
     console.error('Erro ao carregar recado:', error)
@@ -255,9 +254,7 @@ const formatarDataHora = (dataISO) => {
   })
 }
 
-const formatarConteudo = (conteudo) => {
-  return conteudo.replace(/\n/g, '<br>')
-}
+const formatarConteudo = (conteudo) => conteudo.replace(/\n/g, '<br>')
 
 const extrairNomeAnexo = (url) => {
   const partes = url.split('/')
@@ -304,14 +301,13 @@ const confirmarLeitura = async () => {
     notificationStore.success('Leitura confirmada com sucesso!')
   } catch (error) {
     console.error('Erro ao confirmar leitura:', error)
-    notificationStore.error('Erro ao confirmar leitura')
+    notificationStore.error(error.response?.data?.message || 'Erro ao confirmar leitura')
   } finally {
     confirmandoLeitura.value = false
   }
 }
 
 const visualizarImagem = (imagem) => {
-  // Implementar visualizador de imagem (modal)
   window.open(imagem, '_blank')
 }
 
@@ -320,7 +316,7 @@ const editarRecado = () => {
 }
 
 const confirmarDelecao = async () => {
-  if (!confirm('Tem certeza que deseja deletar este recado? Esta ação não pode ser desfeita.')) {
+  if (!confirm('Tem certeza que deseja deletar este recado? Esta acao nao pode ser desfeita.')) {
     return
   }
   
@@ -369,4 +365,3 @@ const confirmarDelecao = async () => {
   font-size: 2rem;
 }
 </style>
-

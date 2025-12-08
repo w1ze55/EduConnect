@@ -49,6 +49,11 @@ public class Recado {
     @CollectionTable(name = "recado_destinatarios_especificos", joinColumns = @JoinColumn(name = "recado_id"))
     @Column(name = "usuario_id")
     private List<Long> destinatariosEspecificos = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "recado_turmas_destinatarias", joinColumns = @JoinColumn(name = "recado_id"))
+    @Column(name = "turma_nome")
+    private List<String> turmasDestinatarias = new ArrayList<>();
     
     @ManyToOne
     @JoinColumn(name = "remetente_id", nullable = false)
