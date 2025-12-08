@@ -132,6 +132,7 @@ const notificationStore = useNotificationStore()
 
 const loading = ref(false)
 const recados = ref([])
+const role = computed(() => authStore.userRole || authStore.user?.role || '')
 
 const filters = ref({
   search: '',
@@ -140,8 +141,7 @@ const filters = ref({
 })
 
 const canSendRecados = computed(() => {
-  const role = authStore.userRole
-  return role === 'PROFESSOR' || role === 'DIRETORIA' || role === 'ADMINISTRADOR'
+  return role.value === 'PROFESSOR' || role.value === 'DIRETORIA' || role.value === 'ADMINISTRADOR'
 })
 
 onMounted(async () => {

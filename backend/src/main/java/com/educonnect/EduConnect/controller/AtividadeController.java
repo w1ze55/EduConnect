@@ -25,8 +25,10 @@ public class AtividadeController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<AtividadeDTO>> listarTodas(
-            @AuthenticationPrincipal Usuario usuarioLogado) {
-        return ResponseEntity.ok(atividadeService.listarTodas(usuarioLogado));
+            @AuthenticationPrincipal Usuario usuarioLogado,
+            @RequestParam(name = "escolaId", required = false) Long escolaId,
+            @RequestParam(name = "professorId", required = false) Long professorId) {
+        return ResponseEntity.ok(atividadeService.listarTodas(usuarioLogado, escolaId, professorId));
     }
     
     @GetMapping("/{id}")

@@ -38,10 +38,10 @@
     <div class="card shadow-sm mb-4">
       <div class="card-body">
         <div class="row g-3">
-          <div class="col-md-4">
+          <div class="col-md-3">
             <input type="text" class="form-control" placeholder="Buscar atividades..." v-model="filtros.busca" />
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <select class="form-select" v-model="filtros.disciplina">
               <option value="">Todas as disciplinas</option>
               <option v-for="disciplina in disciplinasUnicas" :key="disciplina" :value="disciplina">
@@ -49,11 +49,29 @@
               </option>
             </select>
           </div>
-          <div class="col-md-4">
+          <div class="col-md-3">
             <select class="form-select" v-model="filtros.turma">
               <option value="">Todas as turmas</option>
               <option v-for="turma in turmasUnicas" :key="turma" :value="turma">
                 {{ turma }}
+              </option>
+            </select>
+          </div>
+          <div class="col-md-3" v-if="podeGerenciar">
+            <select class="form-select" v-model="filtros.professor" :disabled="carregandoFiltros">
+              <option value="">Todos os professores</option>
+              <option v-for="prof in professoresFiltrados" :key="prof.id" :value="String(prof.id)">
+                {{ prof.nome }}
+              </option>
+            </select>
+          </div>
+        </div>
+        <div class="row g-3 mt-2" v-if="podeGerenciar">
+          <div class="col-md-3">
+            <select class="form-select" v-model="filtros.escola" :disabled="carregandoFiltros || authStore.userRole === 'DIRETORIA'">
+              <option value="">Todas as escolas</option>
+              <option v-for="escola in escolas" :key="escola.id" :value="String(escola.id)">
+                {{ escola.nome }}
               </option>
             </select>
           </div>
@@ -88,6 +106,9 @@
               <small class="text-muted d-block mb-2">
                 <i class="bi bi-person me-1"></i>{{ atividade.professorNome }}
               </small>
+              <small class="text-muted d-block mb-2" v-if="atividade.escolaNome">
+                <i class="bi bi-building me-1"></i>{{ atividade.escolaNome }}
+              </small>
               <small class="text-muted d-block mb-2">
                 <i class="bi bi-calendar me-1"></i>Entrega: {{ formatarData(atividade.dataEntrega) }}
               </small>
@@ -112,11 +133,13 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notifications'
 import atividadesService from '@/services/atividadesService'
+import escolasService from '@/services/escolasService'
+import usuariosService from '@/services/usuariosService'
 import AtividadeModal from './modals/AtividadeModal.vue'
 
 const router = useRouter()
@@ -128,11 +151,16 @@ const atividades = ref([])
 const mostrandoModal = ref(false)
 const modoModal = ref('create')
 const atividadeSelecionada = ref(null)
+const escolas = ref([])
+const professores = ref([])
+const carregandoFiltros = ref(false)
 
 const filtros = ref({
   busca: '',
   disciplina: '',
-  turma: ''
+  turma: '',
+  escola: '',
+  professor: ''
 })
 
 // Computed
@@ -149,8 +177,10 @@ const atividadesFiltradas = computed(() => {
     
     const matchDisciplina = !filtros.value.disciplina || atividade.disciplina === filtros.value.disciplina
     const matchTurma = !filtros.value.turma || atividade.turma === filtros.value.turma
+    const matchEscola = !filtros.value.escola || Number(atividade.escolaId) === Number(filtros.value.escola)
+    const matchProfessor = !filtros.value.professor || Number(atividade.professorId) === Number(filtros.value.professor)
     
-    return matchBusca && matchDisciplina && matchTurma
+    return matchBusca && matchDisciplina && matchTurma && matchEscola && matchProfessor
   })
 })
 
@@ -160,6 +190,11 @@ const disciplinasUnicas = computed(() => {
 
 const turmasUnicas = computed(() => {
   return [...new Set(atividades.value.map(a => a.turma))].sort()
+})
+
+const professoresFiltrados = computed(() => {
+  if (!filtros.value.escola) return professores.value
+  return professores.value.filter(p => p.escolaId && Number(p.escolaId) === Number(filtros.value.escola))
 })
 
 const atividadesPendentes = computed(() => {
@@ -176,12 +211,37 @@ const atividadesAtrasadas = computed(() => {
 const carregarAtividades = async () => {
   try {
     loading.value = true
-    atividades.value = await atividadesService.listar()
+    const params = {}
+    if (authStore.userRole === 'ADMINISTRADOR' || authStore.userRole === 'DIRETORIA') {
+      if (filtros.value.escola) params.escolaId = filtros.value.escola
+      if (filtros.value.professor) params.professorId = filtros.value.professor
+    }
+    atividades.value = await atividadesService.listar(params)
   } catch (error) {
     console.error('Erro ao carregar atividades:', error)
     notifications.error(error.response?.data?.message || 'Erro ao carregar atividades')
   } finally {
     loading.value = false
+  }
+}
+
+const carregarFiltrosAuxiliares = async () => {
+  if (!podeGerenciar.value) return
+  carregandoFiltros.value = true
+  try {
+    if (authStore.userRole === 'ADMINISTRADOR') {
+      escolas.value = await escolasService.listarTodas()
+    } else if (authStore.userRole === 'DIRETORIA' && authStore.user?.escolaId) {
+      const escolaDiretor = await escolasService.buscarPorId(authStore.user.escolaId)
+      escolas.value = escolaDiretor ? [escolaDiretor] : []
+      filtros.value.escola = String(authStore.user.escolaId)
+    }
+
+    professores.value = await usuariosService.listarPorRole('PROFESSOR')
+  } catch (error) {
+    console.error('Erro ao carregar filtros:', error)
+  } finally {
+    carregandoFiltros.value = false
   }
 }
 
@@ -253,7 +313,17 @@ const getStatusTexto = (atividade) => {
 // Inicialização
 onMounted(() => {
   carregarAtividades()
+  carregarFiltrosAuxiliares()
 })
+
+watch(
+  () => [filtros.value.escola, filtros.value.professor],
+  () => {
+    if (authStore.userRole === 'ADMINISTRADOR' || authStore.userRole === 'DIRETORIA') {
+      carregarAtividades()
+    }
+  }
+)
 </script>
 
 <style scoped>

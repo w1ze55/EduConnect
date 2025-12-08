@@ -436,12 +436,30 @@ const escolaNomeDoUsuario = computed(() => {
   return ''
 })
 
+const camposEtapa2Validos = () => {
+  const camposPreenchidos = formData.value.nome && formData.value.email && formData.value.cpf && formData.value.telefone
+  if (!camposPreenchidos) return false
+
+  const emailValido = validarEmail(formData.value.email)
+  const cpfValido = validarCPF(formData.value.cpf)
+  const telefoneValido = validarTelefone(formData.value.telefone)
+
+  // Senha Ǹ obrigat��ria no modo edi��ǜo, mas se houver valor precisa ser vǭlida
+  const senhaObrigatoria = props.mode === 'create'
+  const senhaPreenchida = formData.value.senha && formData.value.senha.trim() !== ''
+  const senhaValida = senhaObrigatoria
+    ? senhaPreenchida && validarSenha(formData.value.senha).valida
+    : !senhaPreenchida || validarSenha(formData.value.senha).valida
+
+  return emailValido && cpfValido && telefoneValido && senhaValida
+}
+
 const podeAvancar = (etapa) => {
   if (etapa === 1) {
     return formData.value.role !== ''
   }
   if (etapa === 2) {
-    return formData.value.nome && formData.value.email && formData.value.cpf && formData.value.telefone
+    return camposEtapa2Validos()
   }
   return true
 }

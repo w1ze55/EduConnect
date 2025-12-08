@@ -18,6 +18,8 @@ public class AtividadeDTO {
     private String turma;
     private Long professorId;
     private String professorNome;
+    private Long escolaId;
+    private String escolaNome;
     private LocalDateTime dataCriacao;
     private LocalDateTime dataEntrega;
     private Double valor;

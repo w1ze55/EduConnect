@@ -103,17 +103,42 @@ const router = createRouter({
 })
 
 // Navigation guards
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next('/login')
-  } else if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    next('/dashboard')
-  } else if (to.meta.roles && !to.meta.roles.includes(authStore.user?.role)) {
-    next('/dashboard')
-  } else {
-    next()
+  try {
+    // Se rota exige auth mas n�o h� token
+    if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+      return next('/login')
+    }
+
+    // Se temos token mas ainda n�o carregamos o usu�rio, buscar antes de aplicar regras de role
+    if (authStore.isAuthenticated && !authStore.user) {
+      try {
+        await authStore.fetchCurrentUser()
+      } catch (e) {
+        authStore.logout()
+        return next('/login')
+      }
+    }
+
+    // Evitar acessar rotas de guest logado
+    if (to.meta.requiresGuest && authStore.isAuthenticated) {
+      return next('/dashboard')
+    }
+
+    // Checagem de roles
+    if (to.meta.roles) {
+      const role = authStore.userRole || authStore.user?.role || ''
+      if (!role || !to.meta.roles.includes(role)) {
+        return next('/dashboard')
+      }
+    }
+
+    return next()
+  } catch (e) {
+    console.error('Erro no guard de rotas:', e)
+    return next('/login')
   }
 })
 
