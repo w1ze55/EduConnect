@@ -4,10 +4,15 @@ WORKDIR /app
 
 # Copiar arquivos do Maven
 COPY pom.xml .
+
+# Baixar dependências primeiro (para cache)
+RUN mvn dependency:go-offline -B || true
+
+# Copiar código fonte
 COPY src ./src
 
-# Build da aplicação
-RUN mvn clean package -DskipTests
+# Build da aplicação com mais output
+RUN mvn clean package -DskipTests -e || (echo "Build failed. Checking for errors..." && find target -name "*.log" -exec cat {} \; && exit 1)
 
 # Stage 2: Runtime
 FROM eclipse-temurin:21-jre-alpine
