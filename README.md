@@ -138,5 +138,3 @@ Obrigado por usar o EduConnect!
 
 **EduConnect** - Conectando escolas, alunos e famílias 🎓
 
-Feito com ❤️ na ilha da magia.
-
