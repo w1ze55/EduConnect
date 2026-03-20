@@ -1,31 +1,27 @@
-version: '3.8'
-
 services:
-  # MySQL Database
   mysql:
     image: mysql:8.0
     container_name: educonnect-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASE: educonnect
-      MYSQL_USER: educonnect
-      MYSQL_PASSWORD: educonnect123
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "4306:3306"
+      - "${MYSQL_HOST_PORT}:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./mysql-init:/docker-entrypoint-initdb.d
     networks:
       - educonnect-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot123"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
 
-  # Spring Boot Backend
   backend:
     build:
       context: ./backend
@@ -33,28 +29,23 @@ services:
     container_name: educonnect-backend
     restart: unless-stopped
     environment:
-      # Database
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/educonnect?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: educonnect
-      SPRING_DATASOURCE_PASSWORD: educonnect123
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.MySQLDialect
-      
-      # JWT
-      JWT_SECRET: ZWR1Y29ubmVjdC1zZWNyZXQta2V5LTIwMjUtbXVpdG8tc2VndXJhLWRldmUtdGVyLXBlbG8tbWVub3MtMjU2LWJpdHMtcGFyYS1mdW5jaW9uYXI=
-      JWT_EXPIRATION: 86400000
-      
-      # CORS
-      CORS_ALLOWED_ORIGINS: http://localhost,http://localhost:3000,http://localhost:5173,http://frontend
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: ${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
     ports:
-      - "8080:8080"
+      - "${BACKEND_HOST_PORT}:8080"
     depends_on:
       mysql:
         condition: service_healthy
     networks:
       - educonnect-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health > /dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -65,16 +56,16 @@ services:
     build:
       context: ./EduConnect
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL}
     container_name: educonnect-frontend
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "${FRONTEND_HOST_PORT}:80"
     depends_on:
       - backend
     networks:
       - educonnect-network
-    environment:
-      - VITE_API_URL=http://localhost:8080/api
 
 networks:
   educonnect-network:

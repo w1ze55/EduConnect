@@ -108,10 +108,10 @@ Sistema completo de gestão escolar desenvolvido com **Vue.js 3** (frontend) e *
 ### Acesso ao MySQL (Docker)
 ```bash
 # Via Docker
-docker exec -it educonnect-mysql mysql -u educonnect -peduconnect123 educonnect
+docker exec -it educonnect-mysql mysql -u <MYSQL_USER> -p<MYSQL_PASSWORD> <MYSQL_DATABASE>
 
 # Via Cliente MySQL
-mysql -h 127.0.0.1 -P 4306 -u educonnect -peduconnect123 educonnect
+mysql -h 127.0.0.1 -P <MYSQL_HOST_PORT> -u <MYSQL_USER> -p<MYSQL_PASSWORD> <MYSQL_DATABASE>
 ```
 
 ## 📄 Licença
