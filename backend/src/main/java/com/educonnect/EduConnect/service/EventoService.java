@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 public class EventoService {
 
     private final EventoRepository eventoRepository;
+    private final GoogleCalendarService googleCalendarService;
 
     @Transactional(readOnly = true)
     public List<EventoResponseDTO> listar(Usuario usuarioLogado) {
@@ -45,6 +46,7 @@ public class EventoService {
         evento.setCriador(usuarioLogado);
 
         evento = eventoRepository.save(evento);
+        googleCalendarService.sincronizarEventoAposSalvar(evento);
         return toResponse(evento);
     }
 
@@ -57,6 +59,7 @@ public class EventoService {
         aplicarRequestNoEvento(dto, evento);
 
         evento = eventoRepository.save(evento);
+        googleCalendarService.sincronizarEventoAposSalvar(evento);
         return toResponse(evento);
     }
 
@@ -66,6 +69,7 @@ public class EventoService {
                 .orElseThrow(() -> new RuntimeException("Evento nao encontrado"));
 
         validarPermissaoAlterar(evento, usuarioLogado);
+        googleCalendarService.deletarEventoNoGoogleSeNecessario(evento);
         eventoRepository.delete(evento);
     }
 
@@ -106,6 +110,10 @@ public class EventoService {
         dto.setDescricao(evento.getDescricao());
         dto.setTipo(evento.getTipo());
         dto.setData(evento.getDataInicio());
+        dto.setGoogleCalendarEventId(evento.getGoogleCalendarEventId());
+        dto.setGoogleCalendarLastSyncedAt(evento.getGoogleCalendarLastSyncedAt());
+        dto.setGoogleCalendarSyncError(evento.getGoogleCalendarSyncError());
+        dto.setGoogleCalendarSynced(evento.getGoogleCalendarEventId() != null && evento.getGoogleCalendarSyncError() == null);
 
         if (evento.getCriador() != null) {
             dto.setCriadorId(evento.getCriador().getId());

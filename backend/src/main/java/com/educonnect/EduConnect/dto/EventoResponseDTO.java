@@ -12,6 +12,11 @@ public class EventoResponseDTO {
     private String tipo;
     private LocalDateTime data;
 
+    private Boolean googleCalendarSynced;
+    private String googleCalendarEventId;
+    private LocalDateTime googleCalendarLastSyncedAt;
+    private String googleCalendarSyncError;
+
     private Long criadorId;
     private String criadorNome;
 

@@ -11,6 +11,10 @@ import java.util.List;
 @Repository
 public interface EventoRepository extends JpaRepository<Evento, Long> {
     List<Evento> findByTipo(String tipo);
+    List<Evento> findByCriador_IdOrderByDataInicioAsc(Long criadorId);
+    long countByCriador_Id(Long criadorId);
+    long countByCriador_IdAndGoogleCalendarEventIdIsNotNull(Long criadorId);
+    long countByCriador_IdAndGoogleCalendarEventIdIsNotNullAndGoogleCalendarSyncErrorIsNull(Long criadorId);
     
     @Query("SELECT e FROM Evento e WHERE e.dataInicio >= :inicio AND e.dataInicio <= :fim ORDER BY e.dataInicio")
     List<Evento> findByPeriodo(LocalDateTime inicio, LocalDateTime fim);

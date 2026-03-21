@@ -30,6 +30,15 @@ public class Evento {
     private LocalDateTime dataFim;
     
     private String tipo; // PROVA, REUNIAO, EVENTO, FERIADO
+
+    @Column(name = "google_calendar_event_id")
+    private String googleCalendarEventId;
+
+    @Column(name = "google_calendar_last_synced_at")
+    private LocalDateTime googleCalendarLastSyncedAt;
+
+    @Column(name = "google_calendar_sync_error", columnDefinition = "TEXT")
+    private String googleCalendarSyncError;
     
     @ManyToOne
     @JoinColumn(name = "criador_id")
