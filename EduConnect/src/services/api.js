@@ -1,8 +1,18 @@
 import axios from 'axios'
 import { useNotificationStore } from '../stores/notifications'
 
+const normalizeApiBaseUrl = (value) => {
+  const rawUrl = (value || '/api').trim().replace(/\/+$/, '')
+
+  if (rawUrl.endsWith('/api')) {
+    return rawUrl
+  }
+
+  return `${rawUrl}/api`
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: normalizeApiBaseUrl(import.meta.env.VITE_API_URL),
   timeout: 10000,
   headers: { 'Content-Type': 'application/json' }
 })
