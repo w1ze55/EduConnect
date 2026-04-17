@@ -5,7 +5,9 @@ import com.educonnect.EduConnect.dto.EventoResponseDTO;
 import com.educonnect.EduConnect.model.Evento;
 import com.educonnect.EduConnect.model.Usuario;
 import com.educonnect.EduConnect.model.enums.Role;
+import com.educonnect.EduConnect.model.enums.TipoNotificacao;
 import com.educonnect.EduConnect.repository.EventoRepository;
+import com.educonnect.EduConnect.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,8 @@ public class EventoService {
 
     private final EventoRepository eventoRepository;
     private final GoogleCalendarService googleCalendarService;
+    private final UsuarioRepository usuarioRepository;
+    private final NotificacaoService notificacaoService;
 
     @Transactional(readOnly = true)
     public List<EventoResponseDTO> listar(Usuario usuarioLogado) {
@@ -47,6 +51,16 @@ public class EventoService {
 
         evento = eventoRepository.save(evento);
         googleCalendarService.sincronizarEventoAposSalvar(evento);
+        notificacaoService.notificarUsuarios(
+            resolverDestinatariosNotificacao(evento),
+            usuarioLogado.getId(),
+            TipoNotificacao.EVENTO,
+            "Novo evento no calendario",
+            evento.getTitulo(),
+            "/calendario",
+            "EVENTO",
+            evento.getId()
+        );
         return toResponse(evento);
     }
 
@@ -70,7 +84,15 @@ public class EventoService {
 
         validarPermissaoAlterar(evento, usuarioLogado);
         googleCalendarService.deletarEventoNoGoogleSeNecessario(evento);
+        notificacaoService.ocultarPorReferencia("EVENTO", id);
         eventoRepository.delete(evento);
+    }
+
+    private List<Usuario> resolverDestinatariosNotificacao(Evento evento) {
+        Long criadorId = evento.getCriador() != null ? evento.getCriador().getId() : null;
+        return usuarioRepository.findByAtivoTrue().stream()
+                .filter(usuario -> criadorId == null || !criadorId.equals(usuario.getId()))
+                .collect(Collectors.toList());
     }
 
     private void validarPermissaoCriar(Usuario usuario) {

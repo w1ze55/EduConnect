@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="EduConnect">
+  <rect width="64" height="64" rx="12" fill="#1f4758"/>
+  <path d="M32 13 10 24l22 11 22-11L32 13Z" fill="#f7fbfd"/>
+  <path d="M18 30v9c0 5 6 9 14 9s14-4 14-9v-9L32 37 18 30Z" fill="#8cc8df"/>
+  <path d="M51 27v16" fill="none" stroke="#f7fbfd" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="51" cy="47" r="4" fill="#f7fbfd"/>
+</svg>

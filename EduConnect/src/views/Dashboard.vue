@@ -266,7 +266,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useNotificationStore } from '../stores/notifications'
@@ -308,6 +308,7 @@ const atividadesPendentes = ref([])
 const proximosEventos = ref([])
 const carregando = ref(false)
 const sidebarFiltrosAberto = ref(false)
+let dashboardAtivo = true
 
 const podeFiltrarEscola = computed(() => userRole.value === 'ADMINISTRADOR')
 const podeFiltrarTurma = computed(() => ['ADMINISTRADOR', 'DIRETORIA', 'PROFESSOR'].includes(userRole.value))
@@ -333,6 +334,10 @@ const usuariosFiltrados = computed(() => {
   if (!escolaSelecionada) return opcoesFiltros.value.usuarios
   return opcoesFiltros.value.usuarios.filter(usuario => !usuario.escolaId || usuario.escolaId === escolaSelecionada)
 })
+
+const podeContinuarCarregamento = () => dashboardAtivo && authStore.isAuthenticated
+
+const deveIgnorarErroDeSaida = () => !dashboardAtivo || !authStore.isAuthenticated
 
 const getPrazoClass = (prazo) => {
   if (!prazo) return 'bg-secondary'
@@ -407,14 +412,20 @@ const mapearRespostaDashboard = (data) => {
 
 const carregarOpcoesFiltros = async () => {
   try {
+    if (!podeContinuarCarregamento()) return
+
     if (podeFiltrarEscola.value) {
       opcoesFiltros.value.escolas = await escolasService.listarTodas()
     }
+
+    if (!podeContinuarCarregamento()) return
 
     if (podeFiltrarTurma.value) {
       const response = await turmasService.listarTurmas()
       opcoesFiltros.value.turmas = response.data || []
     }
+
+    if (!podeContinuarCarregamento()) return
 
     if (podeFiltrarUsuario.value) {
       if (userRole.value === 'ADMINISTRADOR' || userRole.value === 'DIRETORIA') {
@@ -429,12 +440,16 @@ const carregarOpcoesFiltros = async () => {
       }
     }
   } catch (error) {
+    if (deveIgnorarErroDeSaida()) return
+
     console.error('Erro ao carregar filtros do dashboard:', error)
     notificationStore.error('Não foi possível carregar os filtros do dashboard')
   }
 }
 
 const aplicarFiltros = async () => {
+  if (!podeContinuarCarregamento()) return
+
   carregando.value = true
   try {
     const params = {}
@@ -446,13 +461,19 @@ const aplicarFiltros = async () => {
     if (filtros.value.endDate) params.endDate = filtros.value.endDate
 
     const data = await dashboardService.getResumo(params)
+    if (!podeContinuarCarregamento()) return
+
     mapearRespostaDashboard(data)
     sidebarFiltrosAberto.value = false
   } catch (error) {
+    if (deveIgnorarErroDeSaida()) return
+
     console.error('Erro ao carregar dashboard:', error)
     notificationStore.error('Não foi possível carregar os dados do dashboard')
   } finally {
-    carregando.value = false
+    if (dashboardAtivo) {
+      carregando.value = false
+    }
   }
 }
 
@@ -493,7 +514,13 @@ const fecharFiltros = () => {
 
 onMounted(async () => {
   await carregarOpcoesFiltros()
+  if (!podeContinuarCarregamento()) return
+
   await aplicarFiltros()
+})
+
+onUnmounted(() => {
+  dashboardAtivo = false
 })
 </script>
 

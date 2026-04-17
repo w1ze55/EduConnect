@@ -8,6 +8,7 @@ import com.educonnect.EduConnect.model.Documento;
 import com.educonnect.EduConnect.model.Escola;
 import com.educonnect.EduConnect.model.Usuario;
 import com.educonnect.EduConnect.model.enums.Role;
+import com.educonnect.EduConnect.model.enums.TipoNotificacao;
 import com.educonnect.EduConnect.repository.AssinaturaDocumentoRepository;
 import com.educonnect.EduConnect.repository.DocumentoRepository;
 import com.educonnect.EduConnect.repository.EscolaRepository;
@@ -38,6 +39,7 @@ public class DocumentoService {
     private final AssinaturaDocumentoRepository assinaturaRepository;
     private final UsuarioRepository usuarioRepository;
     private final EscolaRepository escolaRepository;
+    private final NotificacaoService notificacaoService;
     
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
@@ -122,6 +124,16 @@ public class DocumentoService {
         documento.setNomesAnexos(nomesAnexos);
         
         documento = documentoRepository.save(documento);
+        notificacaoService.notificarUsuarios(
+            resolverDestinatariosNotificacao(documento),
+            criador.getId(),
+            TipoNotificacao.DOCUMENTO,
+            "Novo documento",
+            documento.getNome(),
+            "/documentos",
+            "DOCUMENTO",
+            documento.getId()
+        );
         return convertToDTO(documento);
     }
     
@@ -273,7 +285,29 @@ public class DocumentoService {
             System.err.println("Erro ao deletar arquivos físicos: " + e.getMessage());
         }
         
+        notificacaoService.ocultarPorReferencia("DOCUMENTO", id);
         documentoRepository.delete(documento);
+    }
+
+    private List<Usuario> resolverDestinatariosNotificacao(Documento documento) {
+        return usuarioRepository.findByAtivoTrue().stream()
+            .filter(usuario -> podeReceberNotificacaoDocumento(documento, usuario))
+            .collect(Collectors.toList());
+    }
+
+    private boolean podeReceberNotificacaoDocumento(Documento documento, Usuario usuario) {
+        if (usuario == null || usuario.getId() == null || documento.getCriador() == null) {
+            return false;
+        }
+        if (usuario.getId().equals(documento.getCriador().getId())) {
+            return false;
+        }
+        if (usuario.getRole() == Role.ADMINISTRADOR) {
+            return true;
+        }
+        return documento.getEscola() != null &&
+            usuario.getEscola() != null &&
+            documento.getEscola().getId().equals(usuario.getEscola().getId());
     }
     
     private DocumentoDTO convertToDTO(Documento documento) {

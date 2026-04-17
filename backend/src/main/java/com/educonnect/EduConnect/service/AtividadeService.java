@@ -5,7 +5,9 @@ import com.educonnect.EduConnect.dto.AtividadeDTO;
 import com.educonnect.EduConnect.model.Atividade;
 import com.educonnect.EduConnect.model.Usuario;
 import com.educonnect.EduConnect.model.enums.Role;
+import com.educonnect.EduConnect.model.enums.TipoNotificacao;
 import com.educonnect.EduConnect.repository.AtividadeRepository;
+import com.educonnect.EduConnect.repository.UsuarioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +20,8 @@ import java.util.stream.Collectors;
 public class AtividadeService {
 
     private final AtividadeRepository atividadeRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final NotificacaoService notificacaoService;
 
     @Transactional(readOnly = true)
     public List<AtividadeDTO> listarTodas(Usuario usuarioLogado, Long escolaFiltro, Long professorFiltro) {
@@ -141,6 +145,16 @@ public class AtividadeService {
         }
 
         atividade = atividadeRepository.save(atividade);
+        notificacaoService.notificarUsuarios(
+            resolverDestinatariosNotificacao(atividade),
+            usuarioLogado.getId(),
+            TipoNotificacao.ATIVIDADE,
+            "Nova atividade",
+            atividade.getTitulo(),
+            "/atividades/" + atividade.getId(),
+            "ATIVIDADE",
+            atividade.getId()
+        );
         return convertToDTO(atividade);
     }
 
@@ -175,7 +189,48 @@ public class AtividadeService {
 
         validarPermissaoEdicao(atividade, usuarioLogado);
 
+        notificacaoService.ocultarPorReferencia("ATIVIDADE", id);
         atividadeRepository.delete(atividade);
+    }
+
+    private List<Usuario> resolverDestinatariosNotificacao(Atividade atividade) {
+        return usuarioRepository.findByAtivoTrue().stream()
+            .filter(usuario -> podeReceberNotificacaoAtividade(atividade, usuario))
+            .collect(Collectors.toList());
+    }
+
+    private boolean podeReceberNotificacaoAtividade(Atividade atividade, Usuario usuario) {
+        if (usuario == null || usuario.getId() == null || atividade.getProfessor() == null) {
+            return false;
+        }
+        if (usuario.getId().equals(atividade.getProfessor().getId())) {
+            return false;
+        }
+
+        if (usuario.getRole() == Role.ADMINISTRADOR) {
+            return true;
+        }
+
+        if (usuario.getRole() == Role.DIRETORIA) {
+            return usuario.getEscola() != null &&
+                atividade.getProfessor().getEscola() != null &&
+                usuario.getEscola().getId().equals(atividade.getProfessor().getEscola().getId());
+        }
+
+        if (usuario.getRole() == Role.PROFESSOR) {
+            return usuario.getId().equals(atividade.getProfessor().getId());
+        }
+
+        if (usuario.getRole() == Role.ALUNO) {
+            return usuario.getTurma() != null && usuario.getTurma().equals(atividade.getTurma());
+        }
+
+        if (usuario.getRole() == Role.RESPONSAVEL) {
+            return usuario.getAlunosVinculados() != null && usuario.getAlunosVinculados().stream()
+                .anyMatch(aluno -> aluno.getTurma() != null && aluno.getTurma().equals(atividade.getTurma()));
+        }
+
+        return false;
     }
 
     private void validarPermissaoVisualizacao(Atividade atividade, Usuario usuario) {

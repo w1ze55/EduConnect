@@ -4,6 +4,7 @@ import com.educonnect.EduConnect.dto.RecadoDTO;
 import com.educonnect.EduConnect.model.LeituraRecado;
 import com.educonnect.EduConnect.model.Recado;
 import com.educonnect.EduConnect.model.Usuario;
+import com.educonnect.EduConnect.model.enums.TipoNotificacao;
 import com.educonnect.EduConnect.repository.LeituraRecadoRepository;
 import com.educonnect.EduConnect.repository.RecadoRepository;
 import com.educonnect.EduConnect.repository.UsuarioRepository;
@@ -23,6 +24,7 @@ public class RecadoService {
     private final LeituraRecadoRepository leituraRecadoRepository;
     private final UsuarioRepository usuarioRepository;
     private final ModelMapper modelMapper;
+    private final NotificacaoService notificacaoService;
 
     public List<RecadoDTO> getRecadosParaUsuario() {
         Usuario usuario = getUsuarioLogado();
@@ -127,6 +129,16 @@ public class RecadoService {
         recado.setRemetente(remetente);
 
         Recado savedRecado = recadoRepository.save(recado);
+        notificacaoService.notificarUsuarios(
+            resolverDestinatariosNotificacao(savedRecado),
+            remetente.getId(),
+            TipoNotificacao.RECADO,
+            "Novo recado",
+            savedRecado.getTitulo(),
+            "/recados/" + savedRecado.getId(),
+            "RECADO",
+            savedRecado.getId()
+        );
         return convertToDTO(savedRecado, remetente);
     }
 
@@ -197,7 +209,77 @@ public class RecadoService {
             throw new RuntimeException("Você não tem permissão para deletar este recado");
         }
 
+        notificacaoService.ocultarPorReferencia("RECADO", id);
         recadoRepository.deleteById(id);
+    }
+
+    private List<Usuario> resolverDestinatariosNotificacao(Recado recado) {
+        return usuarioRepository.findByAtivoTrue().stream()
+            .filter(usuario -> deveReceberNotificacaoRecado(recado, usuario))
+            .collect(Collectors.toList());
+    }
+
+    private boolean deveReceberNotificacaoRecado(Recado recado, Usuario usuario) {
+        if (usuario == null || usuario.getId() == null || recado.getRemetente() == null) {
+            return false;
+        }
+        if (usuario.getId().equals(recado.getRemetente().getId())) {
+            return false;
+        }
+
+        List<Long> especificos = recado.getDestinatariosEspecificos();
+        if (especificos != null && !especificos.isEmpty()) {
+            return especificos.contains(usuario.getId()) || responsavelDeAlunoEspecifico(usuario, especificos);
+        }
+
+        if (!perfilDestinatario(recado, usuario)) {
+            return false;
+        }
+
+        return usuarioAtendeFiltroTurma(recado, usuario);
+    }
+
+    private boolean perfilDestinatario(Recado recado, Usuario usuario) {
+        List<String> destinatarios = recado.getDestinatarios();
+        if (destinatarios == null || destinatarios.isEmpty() || destinatarios.contains("TODOS")) {
+            return true;
+        }
+
+        String role = usuario.getRole().name();
+        if (destinatarios.contains(role)) {
+            return true;
+        }
+
+        return role.equals("RESPONSAVEL") && destinatarios.contains("ALUNO");
+    }
+
+    private boolean usuarioAtendeFiltroTurma(Recado recado, Usuario usuario) {
+        List<String> turmas = recado.getTurmasDestinatarias();
+        if (turmas == null || turmas.isEmpty()) {
+            return true;
+        }
+
+        String role = usuario.getRole().name();
+        if (role.equals("ALUNO")) {
+            return usuario.getTurma() != null && turmas.contains(usuario.getTurma());
+        }
+        if (role.equals("RESPONSAVEL")) {
+            return usuario.getAlunosVinculados() != null && usuario.getAlunosVinculados().stream()
+                .anyMatch(aluno -> aluno.getTurma() != null && turmas.contains(aluno.getTurma()));
+        }
+        if (role.equals("PROFESSOR")) {
+            return usuario.getTurmas() != null && usuario.getTurmas().stream().anyMatch(turmas::contains);
+        }
+        return true;
+    }
+
+    private boolean responsavelDeAlunoEspecifico(Usuario usuario, List<Long> alunosIds) {
+        if (!usuario.getRole().name().equals("RESPONSAVEL") || usuario.getAlunosVinculados() == null) {
+            return false;
+        }
+
+        return usuario.getAlunosVinculados().stream()
+            .anyMatch(aluno -> aluno.getId() != null && alunosIds.contains(aluno.getId()));
     }
 
     private RecadoDTO convertToDTO(Recado recado, Usuario usuario) {

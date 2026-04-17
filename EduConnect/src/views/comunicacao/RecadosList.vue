@@ -48,7 +48,7 @@
           </div>
           <div class="col-md-2">
             <button class="btn btn-outline-secondary w-100" @click="limparFiltros">
-              <i class="bi bi-x-circle me-1"></i>Limpar
+              <i class="bi bi-x-circle me-1"></i>Limpar Filtros
             </button>
           </div>
         </div>
@@ -65,13 +65,14 @@
       <p class="mt-3 text-muted">Nenhum recado encontrado</p>
     </div>
     
-    <div v-else class="row g-4">
-      <div 
-        v-for="recado in recadosFiltrados" 
+    <template v-else>
+      <div class="row g-4">
+      <div
+        v-for="recado in recadosPaginados"
         :key="recado.id"
         class="col-12"
       >
-        <div 
+        <div
           class="card shadow-sm recado-card"
           :class="{ 'recado-nao-lido': !recado.lido }"
           @click="verRecado(recado.id)"
@@ -115,11 +116,43 @@
         </div>
       </div>
     </div>
+
+      <div v-if="totalPaginas > 1" class="recados-pagination mt-4">
+      <div class="text-muted small">
+        Exibindo {{ primeiroRecadoDaPagina }}-{{ ultimoRecadoDaPagina }} de {{ recadosFiltrados.length }} recados
+      </div>
+
+      <nav aria-label="Paginacao de recados">
+        <ul class="pagination mb-0">
+          <li class="page-item" :class="{ disabled: paginaAtual === 1 }">
+            <button class="page-link" type="button" @click="irParaPagina(paginaAtual - 1)">
+              Anterior
+            </button>
+          </li>
+          <li
+            v-for="pagina in paginasVisiveis"
+            :key="pagina"
+            class="page-item"
+            :class="{ active: pagina === paginaAtual }"
+          >
+            <button class="page-link" type="button" @click="irParaPagina(pagina)">
+              {{ pagina }}
+            </button>
+          </li>
+          <li class="page-item" :class="{ disabled: paginaAtual === totalPaginas }">
+            <button class="page-link" type="button" @click="irParaPagina(paginaAtual + 1)">
+              Proxima
+            </button>
+          </li>
+        </ul>
+      </nav>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useNotificationStore } from '../../stores/notifications'
@@ -132,6 +165,8 @@ const notificationStore = useNotificationStore()
 
 const loading = ref(false)
 const recados = ref([])
+const paginaAtual = ref(1)
+const recadosPorPagina = 10
 const role = computed(() => authStore.userRole || authStore.user?.role || '')
 
 const filters = ref({
@@ -193,6 +228,45 @@ const recadosFiltrados = computed(() => {
   })
 })
 
+const totalPaginas = computed(() => Math.max(1, Math.ceil(recadosFiltrados.value.length / recadosPorPagina)))
+
+const recadosPaginados = computed(() => {
+  const inicio = (paginaAtual.value - 1) * recadosPorPagina
+  return recadosFiltrados.value.slice(inicio, inicio + recadosPorPagina)
+})
+
+const primeiroRecadoDaPagina = computed(() => {
+  if (recadosFiltrados.value.length === 0) return 0
+  return (paginaAtual.value - 1) * recadosPorPagina + 1
+})
+
+const ultimoRecadoDaPagina = computed(() => {
+  return Math.min(paginaAtual.value * recadosPorPagina, recadosFiltrados.value.length)
+})
+
+const paginasVisiveis = computed(() => {
+  const total = totalPaginas.value
+  const inicio = Math.max(1, paginaAtual.value - 2)
+  const fim = Math.min(total, inicio + 4)
+  const inicioAjustado = Math.max(1, fim - 4)
+
+  return Array.from({ length: fim - inicioAjustado + 1 }, (_, index) => inicioAjustado + index)
+})
+
+const irParaPagina = (pagina) => {
+  paginaAtual.value = Math.min(Math.max(pagina, 1), totalPaginas.value)
+}
+
+watch(filters, () => {
+  paginaAtual.value = 1
+}, { deep: true })
+
+watch(recadosFiltrados, () => {
+  if (paginaAtual.value > totalPaginas.value) {
+    paginaAtual.value = totalPaginas.value
+  }
+})
+
 const limparFiltros = () => {
   filters.value = {
     search: '',
@@ -252,6 +326,24 @@ const verRecado = (id) => {
   justify-content: center;
   color: white;
   font-size: 1.5rem;
+}
+
+.recados-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+@media (max-width: 576px) {
+  .recados-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pagination {
+    justify-content: center;
+  }
 }
 </style>
 

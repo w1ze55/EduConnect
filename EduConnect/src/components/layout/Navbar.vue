@@ -145,7 +145,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useUserNotificationsStore } from '../../stores/userNotifications'
@@ -169,6 +169,7 @@ const filtroTipo = computed({
 })
 
 const handleLogout = () => {
+  notifStore.stopStream()
   authStore.logout()
   router.push('/login')
 }
@@ -179,9 +180,29 @@ const carregarSeNecessario = () => {
   }
 }
 
-const marcarTodas = () => notifStore.markAllAsRead()
-const limpar = () => notifStore.clearNotifications()
-const toggleRead = (id) => notifStore.toggleRead(id)
+const marcarTodas = async () => {
+  try {
+    await notifStore.markAllAsRead()
+  } catch (error) {
+    console.error('Erro ao marcar notificacoes como lidas:', error)
+  }
+}
+
+const limpar = async () => {
+  try {
+    await notifStore.clearNotifications()
+  } catch (error) {
+    console.error('Erro ao limpar notificacoes:', error)
+  }
+}
+
+const toggleRead = async (id) => {
+  try {
+    await notifStore.toggleRead(id)
+  } catch (error) {
+    console.error('Erro ao alterar leitura da notificacao:', error)
+  }
+}
 
 const formatarData = (data) => {
   if (!data) return ''
@@ -221,6 +242,11 @@ const iconClass = (tipo) => {
 
 onMounted(() => {
   notifStore.loadNotifications()
+  notifStore.startStream()
+})
+
+onUnmounted(() => {
+  notifStore.stopStream()
 })
 </script>
 

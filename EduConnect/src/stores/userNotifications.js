@@ -1,12 +1,29 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAuthStore } from './auth'
-import recadosService from '../services/recadosService'
-import atividadesService from '../services/atividadesService'
-import dashboardService from '../services/dashboardService'
-import documentosService from '../services/documentosService'
+import api from '../services/api'
+import notificacoesService from '../services/notificacoesService'
 
-const storageKeyFor = (userId) => `educonnect-notifs-${userId || 'anon'}`
+const normalizeNotification = (notification) => {
+  const date = notification.dataCriacao || notification.date || new Date().toISOString()
+  return {
+    id: notification.id,
+    type: notification.tipo || notification.type,
+    title: notification.titulo || notification.title,
+    message: notification.mensagem || notification.message,
+    date,
+    timestamp: new Date(date).getTime() || 0,
+    link: notification.link,
+    read: Boolean(notification.lida ?? notification.read),
+    referenceType: notification.referenciaTipo,
+    referenceId: notification.referenciaId
+  }
+}
+
+const streamUrl = () => {
+  const baseUrl = api.defaults.baseURL || '/api'
+  return `${baseUrl.replace(/\/$/, '')}/notificacoes/stream`
+}
 
 export const useUserNotificationsStore = defineStore('userNotifications', () => {
   const authStore = useAuthStore()
@@ -14,153 +31,189 @@ export const useUserNotificationsStore = defineStore('userNotifications', () => 
   const notifications = ref([])
   const filterType = ref('ALL')
   const loading = ref(false)
-  const readState = ref({})
+  const streamController = ref(null)
+
+  let reconnectTimer = null
+  let reconnectAttempts = 0
 
   const filteredNotifications = computed(() => {
     return notifications.value
       .filter((n) => filterType.value === 'ALL' || n.type === filterType.value)
-      .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+      .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
   })
 
   const unreadCount = computed(() => notifications.value.filter((n) => !n.read).length)
 
-  const persistRead = () => {
-    try {
-      localStorage.setItem(storageKeyFor(authStore.user?.id), JSON.stringify(readState.value))
-    } catch (e) {
-      console.warn('Não foi possível salvar estado de leitura', e)
-    }
+  const sortNotifications = () => {
+    notifications.value.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
   }
 
-  const loadRead = () => {
-    try {
-      const raw = localStorage.getItem(storageKeyFor(authStore.user?.id))
-      readState.value = raw ? JSON.parse(raw) : {}
-    } catch (e) {
-      readState.value = {}
+  const upsertNotification = (rawNotification) => {
+    const notification = normalizeNotification(rawNotification)
+    const index = notifications.value.findIndex((n) => n.id === notification.id)
+
+    if (index === -1) {
+      notifications.value.unshift(notification)
+    } else {
+      notifications.value[index] = notification
     }
+
+    sortNotifications()
   }
-
-  const setRead = (id, value) => {
-    readState.value[id] = value
-    const idx = notifications.value.findIndex((n) => n.id === id)
-    if (idx !== -1) notifications.value[idx].read = value
-    persistRead()
-  }
-
-  const toggleRead = (id) => setRead(id, !(readState.value[id] || false))
-
-  const markAllAsRead = () => {
-    notifications.value.forEach((n) => setRead(n.id, true))
-  }
-
-  const clearNotifications = () => {
-    notifications.value = []
-    readState.value = {}
-    persistRead()
-  }
-
-  const asDate = (value) => (value ? new Date(value) : new Date())
-
-  const mapRecados = (recados) => recados.map((r) => {
-    const id = `recado-${r.id}`
-    const date = asDate(r.dataEnvio || r.createdAt || new Date())
-    return {
-      id,
-      type: 'RECADO',
-      title: 'Novo recado',
-      message: r.titulo,
-      date,
-      timestamp: date.getTime(),
-      link: `/recados/${r.id}`,
-      read: readState.value[id] || false
-    }
-  })
-
-  const mapAtividades = (atividades) => atividades.map((a) => {
-    const id = `atividade-${a.id}`
-    const date = asDate(a.dataCriacao || a.dataEntrega || new Date())
-    return {
-      id,
-      type: 'ATIVIDADE',
-      title: 'Entrega de atividade',
-      message: a.titulo,
-      date,
-      timestamp: date.getTime(),
-      link: `/atividades/${a.id}`,
-      read: readState.value[id] || false
-    }
-  })
-
-  const mapEventos = (eventos) => eventos.map((e) => {
-    const id = `evento-${e.id}`
-    const date = asDate(e.createdAt || e.dataInicio || new Date())
-    return {
-      id,
-      type: 'EVENTO',
-      title: e.tipo === 'PROVA' ? 'Nova prova no calendário' : 'Evento no calendário',
-      message: e.titulo,
-      date,
-      timestamp: date.getTime(),
-      link: '/calendario',
-      read: readState.value[id] || false
-    }
-  })
-
-  const mapDocumentos = (docs) => docs.map((d) => {
-    const id = `documento-${d.id}`
-    const date = asDate(d.createdAt || d.data || d.dataEnvio || new Date())
-    return {
-      id,
-      type: 'DOCUMENTO',
-      title: 'Documento recebido',
-      message: d.nome || d.titulo || 'Novo documento',
-      date,
-      timestamp: date.getTime(),
-      link: '/documentos',
-      read: readState.value[id] || false
-    }
-  })
 
   const loadNotifications = async () => {
+    if (!authStore.isAuthenticated) {
+      notifications.value = []
+      return
+    }
+
     loading.value = true
-    loadRead()
-    const aggregated = []
+    try {
+      const response = await notificacoesService.listar()
+      notifications.value = (response.data || []).map(normalizeNotification)
+      sortNotifications()
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const setRead = async (id, value) => {
+    const index = notifications.value.findIndex((n) => n.id === id)
+    if (index === -1) return
+
+    const previous = notifications.value[index].read
+    notifications.value[index].read = value
 
     try {
-      const recadosResp = await recadosService.getRecados()
-      if (recadosResp?.data) aggregated.push(...mapRecados(recadosResp.data))
-    } catch (e) {
-      console.warn('Erro ao carregar recados para notificações', e)
+      const response = await notificacoesService.alterarLeitura(id, value)
+      notifications.value[index] = normalizeNotification(response.data)
+      sortNotifications()
+    } catch (error) {
+      notifications.value[index].read = previous
+      throw error
+    }
+  }
+
+  const toggleRead = async (id) => {
+    const notification = notifications.value.find((n) => n.id === id)
+    if (!notification) return
+    await setRead(id, !notification.read)
+  }
+
+  const markAllAsRead = async () => {
+    const response = await notificacoesService.marcarTodasComoLidas()
+    notifications.value = (response.data || []).map(normalizeNotification)
+    sortNotifications()
+  }
+
+  const clearNotifications = async () => {
+    await notificacoesService.limpar()
+    notifications.value = []
+  }
+
+  const handleSseMessage = (rawEvent) => {
+    const lines = rawEvent.split(/\r?\n/)
+    let eventName = 'message'
+    const dataLines = []
+
+    for (const line of lines) {
+      if (line.startsWith('event:')) {
+        eventName = line.slice(6).trim()
+      } else if (line.startsWith('data:')) {
+        dataLines.push(line.slice(5).trimStart())
+      }
+    }
+
+    if (eventName !== 'notificacao' || dataLines.length === 0) {
+      return
     }
 
     try {
-      const atividades = await atividadesService.listar()
-      if (atividades) aggregated.push(...mapAtividades(atividades))
-    } catch (e) {
-      console.warn('Erro ao carregar atividades para notificações', e)
+      upsertNotification(JSON.parse(dataLines.join('\n')))
+    } catch (error) {
+      console.warn('Nao foi possivel processar notificacao em tempo real', error)
     }
+  }
+
+  const consumeStream = async (response) => {
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const events = buffer.split(/\r?\n\r?\n/)
+      buffer = events.pop() || ''
+      events.forEach(handleSseMessage)
+    }
+  }
+
+  const scheduleReconnect = () => {
+    if (reconnectTimer || !authStore.isAuthenticated) {
+      return
+    }
+
+    const delay = Math.min(30000, 1000 * (2 ** reconnectAttempts))
+    reconnectAttempts += 1
+    reconnectTimer = window.setTimeout(() => {
+      reconnectTimer = null
+      startStream()
+    }, delay)
+  }
+
+  const startStream = async () => {
+    if (streamController.value || !authStore.token) {
+      return
+    }
+
+    const controller = new AbortController()
+    streamController.value = controller
 
     try {
-      const dashboard = await dashboardService.getResumo()
-      if (dashboard?.proximosEventos) aggregated.push(...mapEventos(dashboard.proximosEventos))
-    } catch (e) {
-      console.warn('Erro ao carregar eventos para notificações', e)
+      const response = await fetch(streamUrl(), {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${authStore.token}`,
+          Accept: 'text/event-stream'
+        },
+        cache: 'no-store',
+        signal: controller.signal
+      })
+
+      if (!response.ok || !response.body) {
+        throw new Error(`SSE indisponivel: ${response.status}`)
+      }
+
+      reconnectAttempts = 0
+      await consumeStream(response)
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        console.warn('Stream de notificacoes desconectado', error)
+      }
+    } finally {
+      if (streamController.value === controller) {
+        streamController.value = null
+      }
+      if (!controller.signal.aborted) {
+        scheduleReconnect()
+      }
     }
+  }
 
-    try {
-      const docs = await documentosService.getDocumentos()
-      const lista = docs?.data || docs
-      if (Array.isArray(lista)) aggregated.push(...mapDocumentos(lista))
-    } catch (e) {
-      console.warn('Erro ao carregar documentos para notificações', e)
+  const stopStream = () => {
+    if (reconnectTimer) {
+      window.clearTimeout(reconnectTimer)
+      reconnectTimer = null
     }
+    reconnectAttempts = 0
 
-    notifications.value = aggregated
-      .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
-      .map((n) => ({ ...n, read: readState.value[n.id] || false }))
-
-    loading.value = false
+    if (streamController.value) {
+      streamController.value.abort()
+      streamController.value = null
+    }
   }
 
   return {
@@ -173,6 +226,8 @@ export const useUserNotificationsStore = defineStore('userNotifications', () => 
     markAllAsRead,
     clearNotifications,
     toggleRead,
-    setRead
+    setRead,
+    startStream,
+    stopStream
   }
 })

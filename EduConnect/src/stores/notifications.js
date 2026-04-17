@@ -1,16 +1,32 @@
 import { defineStore } from 'pinia'
 
+let notificationId = 0
+
 export const useNotificationStore = defineStore('notifications', {
   state: () => ({
     notifications: []
   }),
   
   actions: {
-    addNotification(notification) {
-      const id = Date.now()
+    addNotification(notification, type = 'info') {
+      const normalized = typeof notification === 'string'
+        ? { type, message: notification }
+        : { ...notification, type: notification?.type || type, message: notification?.message || '' }
+      const message = String(normalized.message || '').trim()
+
+      if (!message) return null
+
+      const duplicated = this.notifications.some((item) =>
+        item.type === normalized.type && item.message === message
+      )
+
+      if (duplicated) return null
+
+      const id = `${Date.now()}-${notificationId++}`
       this.notifications.push({
         id,
-        ...notification,
+        ...normalized,
+        message,
         timestamp: new Date()
       })
       
@@ -18,6 +34,8 @@ export const useNotificationStore = defineStore('notifications', {
       setTimeout(() => {
         this.removeNotification(id)
       }, 5000)
+
+      return id
     },
     
     removeNotification(id) {
