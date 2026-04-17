@@ -1,6 +1,6 @@
 # 🎓 EduConnect - Plataforma de Comunicação Escolar
 
-Sistema completo de gestão escolar desenvolvido com **Vue.js 3** (frontend) e **Spring Boot** (backend), containerizado com **Docker** e banco de dados **MySQL**.
+Sistema completo de gestão escolar desenvolvido com **Vue.js 3** (frontend) e **Spring Boot** (backend), containerizado com **Docker** e banco de dados **PostgreSQL**.
 
 ## 🌟 Características
 
@@ -43,7 +43,7 @@ Sistema completo de gestão escolar desenvolvido com **Vue.js 3** (frontend) e *
 - **Spring Security** - Autenticação e autorização
 - **JWT (jjwt 0.12.3)** - Tokens de autenticação
 - **Spring Data JPA** - Persistência de dados
-- **MySQL 8** - Banco de dados
+- **PostgreSQL** - Banco de dados
 - **Lombok** - Redução de boilerplate
 - **ModelMapper** - Mapeamento de DTOs
 - **Maven** - Gerenciamento de dependências
@@ -52,7 +52,7 @@ Sistema completo de gestão escolar desenvolvido com **Vue.js 3** (frontend) e *
 - **Docker** - Containerização
 - **Docker Compose** - Orquestração
 - **Nginx** - Proxy reverso e servidor web
-- **MySQL** - Banco de dados persistente
+- **PostgreSQL** - Banco de dados persistente
 
 ## 🎯 Funcionalidades por Perfil
 
@@ -106,13 +106,13 @@ Sistema completo de gestão escolar desenvolvido com **Vue.js 3** (frontend) e *
 
 ## 🗄️ Banco de Dados
 
-### Acesso ao MySQL (Docker)
+### Acesso ao PostgreSQL (Docker)
 ```bash
 # Via Docker
-docker exec -it educonnect-mysql mysql -u <MYSQL_USER> -p<MYSQL_PASSWORD> <MYSQL_DATABASE>
+docker exec -it educonnect-postgres psql -U <POSTGRES_USER> -d <POSTGRES_DB>
 
-# Via Cliente MySQL
-mysql -h 127.0.0.1 -P <MYSQL_HOST_PORT> -u <MYSQL_USER> -p<MYSQL_PASSWORD> <MYSQL_DATABASE>
+# Via Cliente PostgreSQL
+psql -h 127.0.0.1 -p <POSTGRES_HOST_PORT> -U <POSTGRES_USER> -d <POSTGRES_DB>
 ```
 
 ## 📄 Licença

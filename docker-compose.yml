@@ -1,22 +1,20 @@
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: educonnect-mysql
+  postgres:
+    image: postgres:16-alpine
+    container_name: educonnect-postgres
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-educonnect}
+      POSTGRES_USER: ${POSTGRES_USER:-educonnect}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-educonnect123}
     ports:
-      - "${MYSQL_HOST_PORT}:3306"
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./mysql-init:/docker-entrypoint-initdb.d
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - educonnect-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-educonnect} -d ${POSTGRES_DB:-educonnect}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,18 +27,18 @@ services:
     container_name: educonnect-backend
     restart: unless-stopped
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
-      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: ${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-educonnect}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-educonnect}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-educonnect123}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO:-update}
+      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: ${SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT:-org.hibernate.dialect.PostgreSQLDialect}
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION: ${JWT_EXPIRATION}
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
     ports:
       - "${BACKEND_HOST_PORT}:8080"
     depends_on:
-      mysql:
+      postgres:
         condition: service_healthy
     networks:
       - educonnect-network
@@ -72,6 +70,6 @@ networks:
     driver: bridge
 
 volumes:
-  mysql_data:
+  postgres_data:
     driver: local
 
