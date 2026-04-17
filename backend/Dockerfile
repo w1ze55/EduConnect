@@ -21,8 +21,8 @@ WORKDIR /app
 # Copiar JAR da stage de build
 COPY --from=build /app/target/*.jar app.jar
 
-# Expor porta
-EXPOSE 8080
+# Render injeta PORT=10000 em web services; localmente o Spring ainda usa SERVER_PORT/8080.
+EXPOSE 10000
 
 # Variáveis de ambiente (serão sobrescritas pelo docker-compose)
 ENV SPRING_PROFILES_ACTIVE=prod
