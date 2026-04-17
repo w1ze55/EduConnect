@@ -23,4 +23,3 @@ public interface DocumentoRepository extends JpaRepository<Documento, Long> {
     @Query("SELECT d FROM Documento d LEFT JOIN FETCH d.escola LEFT JOIN FETCH d.assinaturas a LEFT JOIN FETCH a.assinante WHERE d.id = :id")
     Documento findByIdWithAssinaturas(@Param("id") Long id);
 }
-
