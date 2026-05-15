@@ -34,19 +34,22 @@ api.interceptors.response.use(
     const notificationStore = useNotificationStore()
     const token = sessionStorage.getItem('token')
     const url = error.config?.url || ''
+    const isLoginRequest = url.includes('/auth/login')
 
     if (error.response) {
-      // Silenciar toasts para chamadas opcionais de documentos
       if (url.includes('/documentos')) {
         return Promise.reject(error)
       }
 
-      // Se não há token (usuário deslogado), ignore toasts de auth
+      // A própria tela de login exibe a mensagem final para evitar duplicidade.
+      if (isLoginRequest) {
+        return Promise.reject(error)
+      }
+
       if (!token && (error.response.status === 401 || error.response.status === 403)) {
         return Promise.reject(error)
       }
 
-       // Evitar toast para dashboard ao sair/logar
       if (url.includes('/dashboard') && (error.response.status === 401 || error.response.status === 403)) {
         return Promise.reject(error)
       }
@@ -54,8 +57,7 @@ api.interceptors.response.use(
       switch (error.response.status) {
         case 401:
           notificationStore.error('Sessão expirada. Faça login novamente.')
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
+          sessionStorage.removeItem('token')
           window.location.href = '/login'
           break
         case 403:
@@ -71,6 +73,10 @@ api.interceptors.response.use(
           notificationStore.error(error.response.data?.message || 'Erro na requisição.')
       }
     } else if (error.request) {
+      if (isLoginRequest) {
+        return Promise.reject(error)
+      }
+
       notificationStore.error('Erro de conexão. Verifique sua internet.')
     }
 

@@ -42,7 +42,14 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/api/google-calendar/callback", "/h2-console/**", "/error").permitAll()
+                .requestMatchers(
+                    "/api/auth/**",
+                    "/api/google-calendar/callback",
+                    "/actuator/health",
+                    "/actuator/info",
+                    "/h2-console/**",
+                    "/error"
+                ).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
             )
