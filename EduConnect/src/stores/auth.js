@@ -24,13 +24,13 @@ export const useAuthStore = defineStore('auth', {
         console.log('[AUTH] Resposta do login:', response.data)
 
         if (!response.data.token) {
-          console.error('[AUTH] Token não retornado!')
-          return { success: false, message: 'Token não recebido' }
+          console.error('[AUTH] Token nao retornado!')
+          return { success: false, message: 'Token nao recebido' }
         }
 
         this.setToken(response.data.token)
 
-        console.log('[AUTH] Buscando dados do usuário do backend...')
+        console.log('[AUTH] Buscando dados do usuario do backend...')
         await this.fetchCurrentUser()
 
         console.log('[AUTH] Login completo!')
@@ -44,8 +44,10 @@ export const useAuthStore = defineStore('auth', {
         this.token = null
         this.user = null
 
+        const isTimeout = error.code === 'ECONNABORTED'
         const message = error.response?.data?.message
-          || (error.request ? 'Não foi possível conectar ao servidor.' : null)
+          || (isTimeout ? 'O servidor demorou para responder. No Render isso pode acontecer enquanto o backend esta iniciando; tente novamente em alguns segundos.' : null)
+          || (error.request ? 'Nao foi possivel conectar ao servidor.' : null)
           || 'Erro ao fazer login'
 
         return {
@@ -58,17 +60,17 @@ export const useAuthStore = defineStore('auth', {
     async fetchCurrentUser() {
       try {
         console.log('[AUTH] GET /auth/me')
-        console.log('[AUTH] Token atual:', this.token ? 'Existe' : 'Não existe')
+        console.log('[AUTH] Token atual:', this.token ? 'Existe' : 'Nao existe')
         console.log('[AUTH] Header Authorization:', api.defaults.headers.common.Authorization)
 
         const response = await api.get('/auth/me')
 
-        console.log('[AUTH] Dados do usuário recebidos:', response.data)
+        console.log('[AUTH] Dados do usuario recebidos:', response.data)
         this.user = response.data
 
         return response.data
       } catch (error) {
-        console.error('[AUTH] Erro ao buscar usuário:', error)
+        console.error('[AUTH] Erro ao buscar usuario:', error)
         console.error('[AUTH] Status:', error.response?.status)
         console.error('[AUTH] Dados:', error.response?.data)
         console.error('[AUTH] Fazendo logout devido ao erro')
@@ -93,7 +95,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async initializeAuth() {
-      console.log('[AUTH] Inicializando autenticação...')
+      console.log('[AUTH] Inicializando autenticacao...')
       const token = sessionStorage.getItem('token')
 
       if (token) {
@@ -102,11 +104,11 @@ export const useAuthStore = defineStore('auth', {
         api.defaults.headers.common.Authorization = `Bearer ${token}`
 
         try {
-          console.log('[AUTH] Buscando usuário do backend...')
+          console.log('[AUTH] Buscando usuario do backend...')
           await this.fetchCurrentUser()
-          console.log('[AUTH] Usuário carregado:', this.user)
+          console.log('[AUTH] Usuario carregado:', this.user)
         } catch (error) {
-          console.error('[AUTH] Erro ao carregar usuário, fazendo logout')
+          console.error('[AUTH] Erro ao carregar usuario, fazendo logout')
           this.logout()
         }
       } else {

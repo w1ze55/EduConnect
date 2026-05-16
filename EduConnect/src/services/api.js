@@ -1,6 +1,8 @@
 import axios from 'axios'
 import { useNotificationStore } from '../stores/notifications'
 
+const DEFAULT_API_TIMEOUT = 60000
+
 const normalizeApiBaseUrl = (value) => {
   const rawUrl = (value || '/api').trim().replace(/\/+$/, '')
 
@@ -11,9 +13,19 @@ const normalizeApiBaseUrl = (value) => {
   return `${rawUrl}/api`
 }
 
+const resolveApiTimeout = (value) => {
+  const parsedTimeout = Number.parseInt(value, 10)
+
+  if (Number.isFinite(parsedTimeout) && parsedTimeout > 0) {
+    return parsedTimeout
+  }
+
+  return DEFAULT_API_TIMEOUT
+}
+
 const api = axios.create({
   baseURL: normalizeApiBaseUrl(import.meta.env.VITE_API_URL),
-  timeout: 10000,
+  timeout: resolveApiTimeout(import.meta.env.VITE_API_TIMEOUT),
   headers: { 'Content-Type': 'application/json' }
 })
 
